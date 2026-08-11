@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "../../dist/api",
+    "rootDir": "../../",
+    "target": "ES2022",
+    "types": ["node"],
+    "strict": true
+  },
+  "include": ["src/**/*.ts", "../shared/src/**/*.ts"],
+  "references": [{ "path": "../shared" }]
+}

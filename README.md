@@ -61,6 +61,31 @@ Later iterations may also include multimodal plant photo analysis and external i
 
 The first implementation phase keeps the stack primarily TypeScript-based so the project can focus on AI engineering concepts before introducing additional services.
 
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the TypeScript API:
+
+```bash
+npm run dev:api
+```
+
+Start the Angular app in a second terminal:
+
+```bash
+npm run dev:web
+```
+
+The Phase 1 app uses:
+
+- Angular frontend: [http://localhost:4200](http://localhost:4200)
+- Node/TypeScript API: [http://localhost:3333/api/garden](http://localhost:3333/api/garden)
+
 ## Roadmap
 
 ### Phase 1 - Foundation & MVP
@@ -68,6 +93,10 @@ The first implementation phase keeps the stack primarily TypeScript-based so the
 - Garden, plant, and observation data models
 - Basic Angular UI
 - Basic backend API
+
+Current Phase 1 implementation includes a shared TypeScript data model, sample garden data, a small Node API, Garden overview screen, Plant Profile screen, and observation history workflow.
+
+See [Phase 1 MVP](docs/phase-1-mvp.md) for MVP boundaries and user journeys.
 
 ### Phase 2 - LLM Core & Structured Output
 
