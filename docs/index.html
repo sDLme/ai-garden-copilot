@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Garden Copilot</title>
+    <meta
+      name="description"
+      content="AI Garden Copilot is an AI-native portfolio project for personalized plant-care recommendations."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #18201a;
+        --muted: #5a665d;
+        --line: #d9e0d9;
+        --surface: #f7f8f4;
+        --leaf: #2f7d53;
+        --rose: #b6455a;
+        --sky: #d9edf2;
+        --sun: #f0bf4d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: var(--surface);
+      }
+
+      main {
+        min-height: 100vh;
+      }
+
+      .hero {
+        display: grid;
+        min-height: 82vh;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        align-items: stretch;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .hero-copy {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(32px, 6vw, 86px);
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: var(--leaf);
+        font-size: 0.82rem;
+        font-weight: 760;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 880px;
+        margin: 0;
+        font-size: clamp(3rem, 7vw, 6.9rem);
+        line-height: 0.95;
+        letter-spacing: 0;
+      }
+
+      .intro {
+        max-width: 660px;
+        margin: 28px 0 0;
+        color: var(--muted);
+        font-size: clamp(1.08rem, 1.7vw, 1.35rem);
+        line-height: 1.6;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--ink);
+        padding: 0 18px;
+        color: var(--ink);
+        font-weight: 720;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        border-color: var(--leaf);
+        background: var(--leaf);
+        color: #fff;
+      }
+
+      .garden-visual {
+        position: relative;
+        overflow: hidden;
+        min-height: 440px;
+        background:
+          radial-gradient(circle at 72% 18%, rgba(240, 191, 77, 0.95) 0 58px, transparent 60px),
+          linear-gradient(180deg, var(--sky) 0 49%, #dce9d5 49% 100%);
+      }
+
+      .garden-visual::before {
+        position: absolute;
+        right: -8%;
+        bottom: -12%;
+        width: 78%;
+        height: 56%;
+        border-radius: 50% 0 0 0;
+        background: #6ca66f;
+        content: "";
+      }
+
+      .garden-visual::after {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 30%;
+        background:
+          linear-gradient(135deg, transparent 0 24px, rgba(47, 125, 83, 0.32) 24px 27px, transparent 27px) 0 0 / 42px 42px,
+          #315f42;
+        content: "";
+      }
+
+      .plant {
+        position: absolute;
+        z-index: 1;
+        bottom: 19%;
+        width: 150px;
+        height: 260px;
+      }
+
+      .plant.one {
+        left: 16%;
+      }
+
+      .plant.two {
+        right: 18%;
+        bottom: 21%;
+        transform: scale(0.86);
+      }
+
+      .stem {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 8px;
+        height: 210px;
+        background: #276643;
+        transform: translateX(-50%);
+      }
+
+      .leaf {
+        position: absolute;
+        width: 84px;
+        height: 42px;
+        border-radius: 84px 0;
+        background: #3f8f5d;
+      }
+
+      .leaf.left {
+        top: 116px;
+        left: 8px;
+        transform: rotate(18deg);
+      }
+
+      .leaf.right {
+        top: 72px;
+        right: 5px;
+        transform: rotate(156deg);
+      }
+
+      .flower {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle, #f7d5dc 0 18px, transparent 19px),
+          radial-gradient(circle at 50% 8%, var(--rose) 0 24px, transparent 25px),
+          radial-gradient(circle at 88% 48%, #d95f73 0 24px, transparent 25px),
+          radial-gradient(circle at 52% 90%, var(--rose) 0 24px, transparent 25px),
+          radial-gradient(circle at 12% 50%, #d95f73 0 24px, transparent 25px);
+        transform: translateX(-50%);
+      }
+
+      .section {
+        padding: 44px clamp(24px, 6vw, 86px);
+      }
+
+      .section h2 {
+        margin: 0 0 18px;
+        font-size: clamp(1.7rem, 3vw, 2.4rem);
+        letter-spacing: 0;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--line);
+      }
+
+      .tile {
+        min-height: 188px;
+        padding: 24px;
+        background: #fff;
+      }
+
+      .tile h3 {
+        margin: 0 0 10px;
+        font-size: 1rem;
+      }
+
+      .tile p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      @media (max-width: 860px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-copy {
+          min-height: 58vh;
+        }
+
+        .garden-visual {
+          min-height: 320px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="eyebrow">AI Product Engineering Portfolio Project</p>
+          <h1 id="page-title">AI Garden Copilot</h1>
+          <p class="intro">
+            An AI-native plant-care assistant that works with real garden context,
+            plant history, tools, retrieval, and human-approved actions.
+          </p>
+          <div class="actions" aria-label="Project links">
+            <a class="button primary" href="https://github.com/sDLme/ai-garden-copilot">GitHub</a>
+            <a class="button" href="#roadmap">Roadmap</a>
+          </div>
+        </div>
+        <div class="garden-visual" aria-hidden="true">
+          <div class="plant one">
+            <div class="stem"></div>
+            <div class="leaf left"></div>
+            <div class="leaf right"></div>
+            <div class="flower"></div>
+          </div>
+          <div class="plant two">
+            <div class="stem"></div>
+            <div class="leaf left"></div>
+            <div class="leaf right"></div>
+            <div class="flower"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="roadmap">
+        <h2>What This Project Demonstrates</h2>
+        <div class="grid">
+          <article class="tile">
+            <h3>Context-Aware AI</h3>
+            <p>
+              Plant profiles, observations, history, and garden state shape every recommendation.
+            </p>
+          </article>
+          <article class="tile">
+            <h3>Tool-Using Workflows</h3>
+            <p>
+              The copilot will retrieve plants, save observations, stream responses, and request approval for actions.
+            </p>
+          </article>
+          <article class="tile">
+            <h3>RAG And Safety</h3>
+            <p>
+              Retrieval, source-backed answers, evaluations, guardrails, and MCP are planned as the product matures.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
