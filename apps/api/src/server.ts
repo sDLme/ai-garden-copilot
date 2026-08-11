@@ -1,9 +1,11 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { GardenRepository } from "./garden.repository";
-import { CreateObservationInput, ObservationType } from "../../shared/src";
+import { CreateObservationInput, ObservationType, PlantQuestionRequest } from "../../shared/src";
+import { PlantCareCopilotService } from "./plant-care-copilot.service";
 
 const port = Number(process.env["PORT"] ?? 3333);
 const repository = new GardenRepository();
+const copilotService = new PlantCareCopilotService();
 
 const observationTypes = new Set<ObservationType>([
   "watering",
@@ -66,6 +68,28 @@ const server = createServer(async (request, response) => {
       }
 
       sendJson(response, 201, observation);
+      return;
+    }
+
+    const recommendationMatch = url.pathname.match(/^\/api\/plants\/([^/]+)\/recommendations$/);
+    if (request.method === "POST" && recommendationMatch) {
+      const plantId = decodeURIComponent(recommendationMatch[1]);
+      const plant = repository.getPlant(plantId);
+
+      if (!plant) {
+        sendJson(response, 404, { message: "Plant not found" });
+        return;
+      }
+
+      const body = await readJson<PlantQuestionRequest>(request);
+
+      if (!body.question?.trim()) {
+        sendJson(response, 400, { message: "Question is required" });
+        return;
+      }
+
+      const recommendation = await copilotService.recommend(plant, body.question);
+      sendJson(response, 200, recommendation);
       return;
     }
 

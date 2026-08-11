@@ -4,16 +4,16 @@ export class GardenRepository {
   private garden: Garden = structuredClone(sampleGarden);
 
   getGarden(): Garden {
-    return structuredClone(this.garden);
+    return this.cloneGarden();
   }
 
   listPlants(): Plant[] {
-    return structuredClone(this.garden.plants);
+    return this.cloneGarden().plants;
   }
 
   getPlant(plantId: string): Plant | undefined {
     const plant = this.garden.plants.find((item) => item.id === plantId);
-    return plant ? structuredClone(plant) : undefined;
+    return plant ? this.clonePlant(plant) : undefined;
   }
 
   addObservation(plantId: string, input: CreateObservationInput): Observation | undefined {
@@ -34,5 +34,21 @@ export class GardenRepository {
 
     plant.observations = [observation, ...plant.observations];
     return structuredClone(observation);
+  }
+
+  private cloneGarden(): Garden {
+    return {
+      ...this.garden,
+      plants: this.garden.plants.map((plant) => this.clonePlant(plant))
+    };
+  }
+
+  private clonePlant(plant: Plant): Plant {
+    return {
+      ...plant,
+      observations: [...plant.observations].sort((left, right) =>
+        right.observedAt.localeCompare(left.observedAt)
+      )
+    };
   }
 }

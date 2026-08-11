@@ -111,6 +111,10 @@ The Angular implementation uses standalone components, `inject()`, signals, zone
 - Plant context injection
 - Structured care recommendations
 
+Current Phase 2 implementation includes a server-side OpenAI Responses API integration, plant-scoped prompt/context builder, strict structured recommendation schema, local fallback mode, and Angular Copilot recommendation UI.
+
+See [Phase 2 Implementation](docs/phase-2-implementation.md) for the API, schema, environment setup, official documentation references, and phase boundary.
+
 ### Phase 3 - Tool Calling, State & Streaming
 
 - `getPlant`

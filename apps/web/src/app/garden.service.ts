@@ -1,7 +1,14 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable } from "rxjs";
-import { CreateObservationInput, Garden, Observation, Plant } from "@garden/shared";
+import {
+  CreateObservationInput,
+  Garden,
+  Observation,
+  Plant,
+  PlantCareRecommendation,
+  PlantQuestionRequest
+} from "@garden/shared";
 
 @Injectable({ providedIn: "root" })
 export class GardenService {
@@ -19,5 +26,9 @@ export class GardenService {
 
   addObservation(plantId: string, input: CreateObservationInput): Observable<Observation> {
     return this.http.post<Observation>(`${this.apiBase}/plants/${plantId}/observations`, input);
+  }
+
+  askPlantQuestion(plantId: string, input: PlantQuestionRequest): Observable<PlantCareRecommendation> {
+    return this.http.post<PlantCareRecommendation>(`${this.apiBase}/plants/${plantId}/recommendations`, input);
   }
 }

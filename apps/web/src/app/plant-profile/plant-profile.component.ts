@@ -2,7 +2,7 @@ import { DatePipe } from "@angular/common";
 import { Component, inject, OnInit, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { ActivatedRoute, RouterLink } from "@angular/router";
-import { CreateObservationInput, ObservationType, Plant } from "@garden/shared";
+import { CreateObservationInput, ObservationType, Plant, PlantCareRecommendation } from "@garden/shared";
 import { GardenService } from "../garden.service";
 
 @Component({
@@ -50,12 +50,89 @@ import { GardenService } from "../garden.service";
           <article class="info-panel copilot-placeholder">
             <p class="eyebrow">MVP Journey 3</p>
             <h2>Ask Copilot</h2>
-            <p>
-              Phase 1 keeps this non-AI. In Phase 2, this panel will send plant context
-              to the LLM and return structured care recommendations.
-            </p>
+            <form [formGroup]="questionForm" (ngSubmit)="askCopilot()">
+              <label>
+                Plant question
+                <textarea
+                  formControlName="question"
+                  rows="4"
+                  placeholder="Should I water Minerva today?"
+                ></textarea>
+              </label>
+
+              <button class="button primary" type="submit" [disabled]="questionForm.invalid || isAskingCopilot()">
+                @if (isAskingCopilot()) {
+                  Preparing recommendation
+                } @else {
+                  Ask Copilot
+                }
+              </button>
+            </form>
+
+            @if (copilotError()) {
+              <p class="error-text">{{ copilotError() }}</p>
+            }
           </article>
         </section>
+
+        @if (recommendation(); as recommendation) {
+          <section class="recommendation-panel" aria-label="Copilot recommendation">
+            <div class="recommendation-header">
+              <div>
+                <p class="eyebrow">Structured Recommendation</p>
+                <h2>{{ recommendation.summary }}</h2>
+              </div>
+              <div class="recommendation-meta">
+                <span>{{ recommendation.urgency }} urgency</span>
+                <span>{{ recommendation.confidence }} confidence</span>
+                <span>{{ recommendation.generatedBy === "openai" ? "OpenAI" : "Local fallback" }}</span>
+              </div>
+            </div>
+
+            <div class="recommendation-grid">
+              <article>
+                <h3>Recommended Actions</h3>
+                <ol class="action-list">
+                  @for (action of recommendation.recommendedActions; track action.label) {
+                    <li>
+                      <strong>{{ action.label }}</strong>
+                      <p>{{ action.rationale }}</p>
+                      <small>{{ action.timing }}</small>
+                      @if (action.requiresApproval) {
+                        <span class="approval-pill">approval needed</span>
+                      }
+                    </li>
+                  }
+                </ol>
+              </article>
+
+              <article>
+                <h3>Missing Information</h3>
+                <ul class="compact-list">
+                  @for (item of recommendation.missingInformation; track item) {
+                    <li>{{ item }}</li>
+                  } @empty {
+                    <li>No missing information flagged.</li>
+                  }
+                </ul>
+
+                <h3>Care Notes</h3>
+                <ul class="compact-list">
+                  @for (note of recommendation.careNotes; track note) {
+                    <li>{{ note }}</li>
+                  }
+                </ul>
+
+                <p class="context-note">
+                  Used {{ recommendation.contextUsed.observationsReviewed }} observations.
+                  @if (recommendation.contextUsed.latestObservationDate) {
+                    Latest: {{ recommendation.contextUsed.latestObservationDate | date: "MMM d, y" }}.
+                  }
+                </p>
+              </article>
+            </div>
+          </section>
+        }
 
         <section class="observations-layout">
           <article class="info-panel">
@@ -128,6 +205,14 @@ export class PlantProfileComponent implements OnInit {
     details: [""]
   });
 
+  readonly questionForm = this.formBuilder.nonNullable.group({
+    question: ["Should I water this plant today?", [Validators.required, Validators.minLength(8)]]
+  });
+
+  readonly recommendation = signal<PlantCareRecommendation | null>(null);
+  readonly isAskingCopilot = signal(false);
+  readonly copilotError = signal("");
+
   ngOnInit(): void {
     this.loadPlant();
   }
@@ -148,6 +233,30 @@ export class PlantProfileComponent implements OnInit {
       });
       this.observationForm.reset({ type: "health-check", summary: "", details: "" });
     });
+  }
+
+  askCopilot(): void {
+    const currentPlant = this.plant();
+
+    if (!currentPlant || this.questionForm.invalid || this.isAskingCopilot()) {
+      return;
+    }
+
+    this.isAskingCopilot.set(true);
+    this.copilotError.set("");
+
+    this.gardenService
+      .askPlantQuestion(currentPlant.id, this.questionForm.getRawValue())
+      .subscribe({
+        next: (recommendation) => {
+          this.recommendation.set(recommendation);
+          this.isAskingCopilot.set(false);
+        },
+        error: () => {
+          this.copilotError.set("Copilot could not prepare a recommendation. Check the API server and try again.");
+          this.isAskingCopilot.set(false);
+        }
+      });
   }
 
   private loadPlant(): void {

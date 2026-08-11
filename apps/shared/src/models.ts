@@ -42,3 +42,36 @@ export interface CreateObservationInput {
   summary: string;
   details?: string;
 }
+
+export type RecommendationUrgency = "low" | "medium" | "high" | "critical";
+
+export type RecommendationConfidence = "low" | "medium" | "high";
+
+export interface PlantQuestionRequest {
+  question: string;
+}
+
+export interface RecommendedAction {
+  label: string;
+  rationale: string;
+  timing: string;
+  requiresApproval: boolean;
+}
+
+export interface RecommendationContextUsed {
+  observationsReviewed: number;
+  latestObservationDate: string;
+}
+
+export interface PlantCareRecommendation {
+  plantId: string;
+  question: string;
+  summary: string;
+  urgency: RecommendationUrgency;
+  confidence: RecommendationConfidence;
+  recommendedActions: RecommendedAction[];
+  missingInformation: string[];
+  careNotes: string[];
+  contextUsed: RecommendationContextUsed;
+  generatedBy: "openai" | "local-fallback";
+}
