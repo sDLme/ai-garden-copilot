@@ -1,6 +1,7 @@
 import { ApprovalRequest, CopilotStreamEvent, Plant, PlantCareRecommendation } from "../../shared/src";
 import { GardenRepository } from "./garden.repository";
 import { GardenToolsService } from "./garden-tools.service";
+import { GardenKnowledgeService } from "./garden-knowledge.service";
 import { PlantCareCopilotService, PlantCareCopilotEnvironment } from "./plant-care-copilot.service";
 
 export class CopilotStreamService {
@@ -47,7 +48,21 @@ export class CopilotStreamService {
             }
           });
 
-          const recommendation = await new PlantCareCopilotService(this.environment).recommend(plant, question);
+          const retrieveKnowledgeCall = this.gardenTools.createToolCall("retrieveKnowledge", {
+            plantId,
+            question
+          });
+          await writer.send({ type: "tool-call", toolCall: retrieveKnowledgeCall });
+          const knowledgeContext = await new GardenKnowledgeService(this.environment).retrieve(question, plant);
+          await writer.send({
+            type: "tool-result",
+            result: {
+              toolCallId: retrieveKnowledgeCall.id,
+              summary: `Retrieved ${knowledgeContext.length} trusted garden knowledge sources.`
+            }
+          });
+
+          const recommendation = await new PlantCareCopilotService(this.environment).recommend(plant, question, knowledgeContext);
           await writer.send({ type: "recommendation", recommendation });
 
           const approval = this.maybeCreateApprovalRequest(plant, question, recommendation);

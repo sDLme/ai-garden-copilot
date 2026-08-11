@@ -1,4 +1,4 @@
-import { Plant, PlantCareRecommendation } from "../../shared/src";
+import { KnowledgeContext, Plant, PlantCareRecommendation } from "../../shared/src";
 import { buildPlantCareInput, plantCareSystemInstructions } from "./plant-context.prompt";
 import { plantCareRecommendationSchema } from "./plant-care-recommendation.schema";
 
@@ -7,7 +7,7 @@ const fallbackModel = "gpt-5-mini";
 const fallbackWorkersAiModel = "@cf/meta/llama-3.1-8b-instruct-fast";
 
 interface WorkersAiBinding {
-  run(model: string, input: WorkersAiTextGenerationInput): Promise<WorkersAiTextGenerationResponse>;
+  run(model: string, input: WorkersAiTextGenerationInput | WorkersAiEmbeddingInput): Promise<WorkersAiTextGenerationResponse | unknown>;
 }
 
 export interface PlantCareCopilotEnvironment {
@@ -20,22 +20,27 @@ export interface PlantCareCopilotEnvironment {
 export class PlantCareCopilotService {
   constructor(private readonly environment: PlantCareCopilotEnvironment = readProcessEnvironment()) {}
 
-  async recommend(plant: Plant, question: string): Promise<PlantCareRecommendation> {
+  async recommend(plant: Plant, question: string, knowledgeContext: KnowledgeContext[] = []): Promise<PlantCareRecommendation> {
     const normalizedQuestion = question.trim();
     const workersAi = this.environment.AI;
     const apiKey = this.environment.OPENAI_API_KEY;
 
     if (workersAi) {
       try {
-        return await this.recommendWithWorkersAi(workersAi, plant, normalizedQuestion);
+        return await this.recommendWithWorkersAi(workersAi, plant, normalizedQuestion, knowledgeContext);
       } catch (error) {
         console.warn("Workers AI recommendation failed", error);
-        return this.createLocalFallback(plant, normalizedQuestion, "Workers AI is unavailable or the free daily quota was reached.");
+        return this.createLocalFallback(
+          plant,
+          normalizedQuestion,
+          "Workers AI is unavailable or the free daily quota was reached.",
+          knowledgeContext
+        );
       }
     }
 
     if (!apiKey) {
-      return this.createLocalFallback(plant, normalizedQuestion, "No live AI provider is configured.");
+      return this.createLocalFallback(plant, normalizedQuestion, "No live AI provider is configured.", knowledgeContext);
     }
 
     const response = await fetch(openAiResponsesUrl, {
@@ -53,7 +58,7 @@ export class PlantCareCopilotService {
           },
           {
             role: "user",
-            content: buildPlantCareInput(plant, normalizedQuestion)
+            content: buildPlantCareInput(plant, normalizedQuestion, knowledgeContext)
           }
         ],
         text: {
@@ -80,7 +85,7 @@ export class PlantCareCopilotService {
     }
 
     return {
-      ...parseRecommendation(outputText),
+      ...withTrustedContext(parseRecommendation(outputText), plant, normalizedQuestion, knowledgeContext),
       generatedBy: "openai"
     };
   }
@@ -88,9 +93,10 @@ export class PlantCareCopilotService {
   private async recommendWithWorkersAi(
     workersAi: WorkersAiBinding,
     plant: Plant,
-    question: string
+    question: string,
+    knowledgeContext: KnowledgeContext[]
   ): Promise<PlantCareRecommendation> {
-    const response = await workersAi.run(this.environment.CLOUDFLARE_AI_MODEL ?? fallbackWorkersAiModel, {
+    const response = (await workersAi.run(this.environment.CLOUDFLARE_AI_MODEL ?? fallbackWorkersAiModel, {
       messages: [
         {
           role: "system",
@@ -98,12 +104,13 @@ export class PlantCareCopilotService {
             plantCareSystemInstructions,
             "Return only valid JSON. Do not wrap the response in markdown.",
             "Use string confidence values only: low, medium, or high.",
-            "Every recommended action must include label, rationale, timing, and requiresApproval."
+            "Every recommended action must include label, rationale, timing, and requiresApproval.",
+            "Copy the supplied retrieved garden knowledge sources into contextUsed.sources."
           ].join(" ")
         },
         {
           role: "user",
-          content: buildPlantCareInput(plant, question)
+          content: buildPlantCareInput(plant, question, knowledgeContext)
         }
       ],
       max_tokens: 700,
@@ -112,7 +119,7 @@ export class PlantCareCopilotService {
         type: "json_schema",
         json_schema: plantCareRecommendationSchema
       }
-    });
+    })) as WorkersAiTextGenerationResponse;
 
     const outputText = extractWorkersAiText(response);
 
@@ -121,12 +128,17 @@ export class PlantCareCopilotService {
     }
 
     return {
-      ...parseWorkersAiRecommendation(outputText, plant, question),
+      ...withTrustedContext(parseWorkersAiRecommendation(outputText, plant, question), plant, question, knowledgeContext),
       generatedBy: "workers-ai"
     };
   }
 
-  private createLocalFallback(plant: Plant, question: string, reason: string): PlantCareRecommendation {
+  private createLocalFallback(
+    plant: Plant,
+    question: string,
+    reason: string,
+    knowledgeContext: KnowledgeContext[] = []
+  ): PlantCareRecommendation {
     const latestObservation = plant.observations[0];
 
     return {
@@ -146,7 +158,7 @@ export class PlantCareCopilotService {
         },
         {
           label: "Add any missing symptoms or soil moisture details",
-          rationale: "Phase 2 recommendations work best when the selected plant context is specific.",
+          rationale: "Source-backed recommendations work best when the selected plant context is specific.",
           timing: "Before relying on care advice",
           requiresApproval: false
         }
@@ -154,11 +166,14 @@ export class PlantCareCopilotService {
       missingInformation: [reason, "Current soil moisture", "Current leaf and bud condition"],
       careNotes: [
         "This is a local fallback response, not a model-generated recommendation.",
-        "The deployed app can use Cloudflare Workers AI when the free daily allocation is available."
+        "The deployed app can use Cloudflare Workers AI when the free daily allocation is available.",
+        ...knowledgeContext.map((source) => `${source.title}: ${source.excerpt}`)
       ],
       contextUsed: {
         observationsReviewed: plant.observations.length,
-        latestObservationDate: latestObservation?.observedAt ?? ""
+        latestObservationDate: latestObservation?.observedAt ?? "",
+        knowledgeSourcesReviewed: knowledgeContext.length,
+        sources: knowledgeContext
       },
       generatedBy: "local-fallback"
     };
@@ -185,6 +200,10 @@ interface WorkersAiTextGenerationInput {
     type: "json_schema";
     json_schema: typeof plantCareRecommendationSchema;
   };
+}
+
+interface WorkersAiEmbeddingInput {
+  text: string[];
 }
 
 interface WorkersAiTextGenerationResponse {
@@ -299,7 +318,30 @@ function createStructuredRecommendationFromWorkersAiText(
     ],
     contextUsed: {
       observationsReviewed: plant.observations.length,
-      latestObservationDate: latestObservation?.observedAt ?? ""
+      latestObservationDate: latestObservation?.observedAt ?? "",
+      knowledgeSourcesReviewed: 0,
+      sources: []
+    }
+  };
+}
+
+function withTrustedContext(
+  recommendation: Omit<PlantCareRecommendation, "generatedBy">,
+  plant: Plant,
+  question: string,
+  knowledgeContext: KnowledgeContext[]
+): Omit<PlantCareRecommendation, "generatedBy"> {
+  const latestObservation = plant.observations[0];
+
+  return {
+    ...recommendation,
+    plantId: plant.id,
+    question,
+    contextUsed: {
+      observationsReviewed: plant.observations.length,
+      latestObservationDate: latestObservation?.observedAt ?? "",
+      knowledgeSourcesReviewed: knowledgeContext.length,
+      sources: knowledgeContext
     }
   };
 }
@@ -348,7 +390,9 @@ function normalizeWorkersAiRecommendation(
       : ["Workers AI response was normalized into the app's structured recommendation format."],
     contextUsed: {
       observationsReviewed: plant.observations.length,
-      latestObservationDate: latestObservation?.observedAt ?? ""
+      latestObservationDate: latestObservation?.observedAt ?? "",
+      knowledgeSourcesReviewed: 0,
+      sources: []
     }
   };
 }

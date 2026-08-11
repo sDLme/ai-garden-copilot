@@ -59,9 +59,27 @@ export interface RecommendedAction {
   requiresApproval: boolean;
 }
 
+export type KnowledgeSourceType = "project-note" | "care-principle" | "safety-guideline";
+
+export interface KnowledgeSource {
+  id: string;
+  title: string;
+  sourceType: KnowledgeSourceType;
+  url?: string;
+}
+
+export interface KnowledgeContext {
+  sourceId: string;
+  title: string;
+  excerpt: string;
+  relevanceScore: number;
+}
+
 export interface RecommendationContextUsed {
   observationsReviewed: number;
   latestObservationDate: string;
+  knowledgeSourcesReviewed: number;
+  sources: KnowledgeContext[];
 }
 
 export interface PlantCareRecommendation {
@@ -77,7 +95,7 @@ export interface PlantCareRecommendation {
   generatedBy: "workers-ai" | "openai" | "local-fallback";
 }
 
-export type GardenToolName = "listPlants" | "getPlant" | "saveObservation";
+export type GardenToolName = "listPlants" | "getPlant" | "retrieveKnowledge" | "saveObservation";
 
 export interface GardenToolCall {
   id: string;

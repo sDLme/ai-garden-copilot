@@ -167,6 +167,10 @@ See [Phase 3 Implementation](docs/phase-3-implementation.md) for the streaming A
 - Source-backed answers
 - Context strategy
 
+Current Phase 4 implementation includes a trusted project-authored garden knowledge base, plant-aware retrieval, optional Workers AI embeddings, deterministic lexical retrieval fallback, source-backed structured recommendations, and a Sources section in the Angular Copilot UI.
+
+See [Phase 4 Implementation](docs/phase-4-implementation.md) for retrieval strategy, technology choices, official Cloudflare references, and the current phase boundary.
+
 ### Phase 5 - Agentic Workflow, MCP & Safety
 
 - Agent orchestration

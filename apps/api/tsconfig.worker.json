@@ -7,6 +7,7 @@
   "include": [
     "src/worker.ts",
     "src/copilot-stream.service.ts",
+    "src/garden-knowledge.service.ts",
     "src/garden-tools.service.ts",
     "src/garden.repository.ts",
     "src/plant-care-copilot.service.ts",

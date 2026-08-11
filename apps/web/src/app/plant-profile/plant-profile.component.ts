@@ -155,10 +155,24 @@ import { GardenService } from "../garden.service";
 
                 <p class="context-note">
                   Used {{ recommendation.contextUsed.observationsReviewed }} observations.
+                  Retrieved {{ recommendation.contextUsed.knowledgeSourcesReviewed }} knowledge sources.
                   @if (recommendation.contextUsed.latestObservationDate) {
                     Latest: {{ recommendation.contextUsed.latestObservationDate | date: "MMM d, y" }}.
                   }
                 </p>
+
+                @if (recommendation.contextUsed.sources.length) {
+                  <h3>Sources</h3>
+                  <ol class="source-list">
+                    @for (source of recommendation.contextUsed.sources; track source.sourceId) {
+                      <li>
+                        <strong>{{ source.title }}</strong>
+                        <p>{{ source.excerpt }}</p>
+                        <small>Score {{ source.relevanceScore }}</small>
+                      </li>
+                    }
+                  </ol>
+                }
               </article>
             </div>
           </section>
@@ -411,7 +425,8 @@ export class PlantProfileComponent implements OnInit, OnDestroy {
     }
 
     if (event.type === "tool-call") {
-      this.addTraceItem("tool", `Calling ${event.toolCall.name}`, JSON.stringify(event.toolCall.input));
+      const kind = event.toolCall.name === "retrieveKnowledge" ? "knowledge" : "tool";
+      this.addTraceItem(kind, `Calling ${event.toolCall.name}`, JSON.stringify(event.toolCall.input));
       return;
     }
 
@@ -456,7 +471,7 @@ export class PlantProfileComponent implements OnInit, OnDestroy {
 
 interface CopilotTraceItem {
   id: string;
-  kind: "state" | "tool" | "result" | "ai" | "approval" | "error";
+  kind: "state" | "tool" | "knowledge" | "result" | "ai" | "approval" | "error";
   title: string;
   detail: string;
 }

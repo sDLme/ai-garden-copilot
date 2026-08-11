@@ -49,10 +49,25 @@ export const plantCareRecommendationSchema = {
     contextUsed: {
       type: "object",
       additionalProperties: false,
-      required: ["observationsReviewed", "latestObservationDate"],
+      required: ["observationsReviewed", "latestObservationDate", "knowledgeSourcesReviewed", "sources"],
       properties: {
         observationsReviewed: { type: "number" },
-        latestObservationDate: { type: "string" }
+        latestObservationDate: { type: "string" },
+        knowledgeSourcesReviewed: { type: "number" },
+        sources: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["sourceId", "title", "excerpt", "relevanceScore"],
+            properties: {
+              sourceId: { type: "string" },
+              title: { type: "string" },
+              excerpt: { type: "string" },
+              relevanceScore: { type: "number" }
+            }
+          }
+        }
       }
     }
   }

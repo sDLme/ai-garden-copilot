@@ -388,7 +388,8 @@ button.button.primary {
 }
 
 .action-list,
-.compact-list {
+.compact-list,
+.source-list {
   display: grid;
   gap: 12px;
   margin: 0;
@@ -401,12 +402,14 @@ button.button.primary {
 
 .action-list p,
 .compact-list li,
+.source-list p,
 .context-note {
   color: var(--muted);
   line-height: 1.5;
 }
 
-.action-list small {
+.action-list small,
+.source-list small {
   display: block;
   color: var(--muted);
   margin: 4px 0 8px;
