@@ -54,7 +54,8 @@ Later iterations may also include multimodal plant photo analysis and external i
 
 - Angular
 - TypeScript
-- Node.js backend
+- Node.js backend for local development
+- Cloudflare Workers backend for the deployed AI API
 - LLM integration
 - Tool calling
 - Database-backed garden context
@@ -77,6 +78,12 @@ Start the TypeScript API:
 npm run dev:api
 ```
 
+Or run the Cloudflare Workers API locally:
+
+```bash
+npm run dev:worker
+```
+
 Start the Angular app in a second terminal:
 
 ```bash
@@ -89,6 +96,21 @@ The Phase 1 app uses:
 - Node/TypeScript API: [http://localhost:3333/api/garden](http://localhost:3333/api/garden)
 
 For GitHub Pages, the Angular app reads its backend URL from `apps/web/public/app-config.js`. See [GitHub Pages AI Configuration](docs/github-pages-ai-config.md) for the safe production setup.
+
+Deploy the backend to Cloudflare Workers:
+
+```bash
+npx wrangler secret put OPENAI_API_KEY
+npm run deploy:worker
+```
+
+The secret step can be skipped for an early public deployment. Without `OPENAI_API_KEY`, the Worker returns local fallback Copilot recommendations.
+
+Then rebuild the GitHub Pages app with the deployed Worker API URL:
+
+```bash
+PUBLIC_API_BASE_URL="https://ai-garden-copilot-api.ai-garden-copilot.workers.dev/api" npm run build:pages
+```
 
 Build the GitHub Pages app:
 

@@ -20,11 +20,11 @@ window.aiGardenConfig = {
 };
 ```
 
-For GitHub Pages, update `apiBaseUrl` to the deployed backend URL:
+For GitHub Pages, update `apiBaseUrl` to the deployed backend URL. The planned backend host for this project is Cloudflare Workers:
 
 ```js
 window.aiGardenConfig = {
-  apiBaseUrl: "https://your-backend.example.com/api"
+  apiBaseUrl: "https://ai-garden-copilot-api.ai-garden-copilot.workers.dev/api"
 };
 ```
 
@@ -81,10 +81,49 @@ OPENAI_MODEL=gpt-5-mini
 
 Examples of suitable backend hosts:
 
-- Vercel Functions
 - Cloudflare Workers
+- Vercel Functions
 - Render
 - Fly.io
 - Railway
 
 GitHub repository secrets are useful for GitHub Actions, but they are not runtime secrets for GitHub Pages.
+
+## Cloudflare Workers Deployment
+
+This repo includes a Worker entrypoint at:
+
+```text
+apps/api/src/worker.ts
+```
+
+The Worker uses the same shared garden models and Copilot recommendation service as the local Node API, but runs through Cloudflare's Fetch API runtime.
+
+Install dependencies, then authenticate Wrangler:
+
+```bash
+npm install
+npx wrangler login
+```
+
+Store the OpenAI key as a Cloudflare Worker secret:
+
+```bash
+npx wrangler secret put OPENAI_API_KEY
+```
+
+This step can be skipped during early deployment. Without `OPENAI_API_KEY`, the Worker still serves the garden API and returns a local fallback Copilot recommendation instead of a live OpenAI-generated recommendation.
+
+Deploy the backend:
+
+```bash
+npm run deploy:worker
+```
+
+After deployment, rebuild GitHub Pages with the Worker API URL:
+
+```bash
+PUBLIC_API_BASE_URL="https://ai-garden-copilot-api.ai-garden-copilot.workers.dev/api" npm run build:pages
+```
+
+Commit and push the regenerated `docs/app` files so the public frontend calls the deployed Worker.

@@ -1,3 +1,3 @@
 window.aiGardenConfig = {
-  apiBaseUrl: "https://your-backend.example.com/api"
+  apiBaseUrl: "https://ai-garden-copilot-api.ai-garden-copilot.workers.dev/api"
 };

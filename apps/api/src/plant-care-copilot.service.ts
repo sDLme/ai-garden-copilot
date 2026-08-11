@@ -3,24 +3,32 @@ import { buildPlantCareInput, plantCareSystemInstructions } from "./plant-contex
 import { plantCareRecommendationSchema } from "./plant-care-recommendation.schema";
 
 const openAiResponsesUrl = "https://api.openai.com/v1/responses";
-const defaultModel = process.env["OPENAI_MODEL"] ?? "gpt-5-mini";
+const fallbackModel = "gpt-5-mini";
+
+export interface PlantCareCopilotEnvironment {
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
+}
 
 export class PlantCareCopilotService {
+  constructor(private readonly environment: PlantCareCopilotEnvironment = process.env) {}
+
   async recommend(plant: Plant, question: string): Promise<PlantCareRecommendation> {
     const normalizedQuestion = question.trim();
+    const apiKey = this.environment.OPENAI_API_KEY;
 
-    if (!process.env["OPENAI_API_KEY"]) {
+    if (!apiKey) {
       return this.createLocalFallback(plant, normalizedQuestion);
     }
 
     const response = await fetch(openAiResponsesUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env["OPENAI_API_KEY"]}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: defaultModel,
+        model: this.environment.OPENAI_MODEL ?? fallbackModel,
         input: [
           {
             role: "system",

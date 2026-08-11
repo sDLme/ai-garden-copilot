@@ -6,7 +6,7 @@
     "outDir": "../../dist/api",
     "rootDir": "../../",
     "target": "ES2022",
-    "types": ["node"],
+    "types": ["node", "@cloudflare/workers-types"],
     "strict": true
   },
   "include": ["src/**/*.ts", "../shared/src/**/*.ts"],
