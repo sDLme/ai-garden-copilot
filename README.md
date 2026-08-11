@@ -4,6 +4,14 @@ AI Garden Copilot is a personal portfolio project designed to demonstrate a prac
 
 The goal is not to build a simple plant-care chatbot. The goal is to build an AI-native product that understands a user's real garden, remembers plant context and history, uses tools and knowledge sources, and provides personalized care recommendations.
 
+## Live Demo
+
+The project has a GitHub Pages landing page:
+
+[https://sdlme.github.io/ai-garden-copilot/](https://sdlme.github.io/ai-garden-copilot/)
+
+For now, this page presents the portfolio concept and roadmap. As the product grows, it can become the public demo entry point for the Angular application.
+
 ## Product Idea
 
 Users create a garden profile and add plants with details such as:
