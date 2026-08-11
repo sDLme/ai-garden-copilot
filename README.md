@@ -100,11 +100,10 @@ For GitHub Pages, the Angular app reads its backend URL from `apps/web/public/ap
 Deploy the backend to Cloudflare Workers:
 
 ```bash
-npx wrangler secret put OPENAI_API_KEY
 npm run deploy:worker
 ```
 
-The secret step can be skipped for an early public deployment. Without `OPENAI_API_KEY`, the Worker returns local fallback Copilot recommendations.
+The deployed Worker uses Cloudflare Workers AI as the free-first AI provider. OpenAI is optional and can be added later as a backend-only secret.
 
 Then rebuild the GitHub Pages app with the deployed Worker API URL:
 
@@ -143,7 +142,7 @@ The Angular implementation uses standalone components, `inject()`, signals, zone
 - Plant context injection
 - Structured care recommendations
 
-Current Phase 2 implementation includes a server-side OpenAI Responses API integration, plant-scoped prompt/context builder, strict structured recommendation schema, local fallback mode, and Angular Copilot recommendation UI.
+Current Phase 2 implementation includes a Cloudflare Workers AI production integration, optional server-side OpenAI Responses API fallback, plant-scoped prompt/context builder, structured recommendation schema, local fallback mode, and Angular Copilot recommendation UI.
 
 See [Phase 2 Implementation](docs/phase-2-implementation.md) for the API, schema, environment setup, official documentation references, and phase boundary.
 

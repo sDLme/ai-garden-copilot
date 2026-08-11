@@ -4,6 +4,7 @@ import { PlantCareCopilotService, PlantCareCopilotEnvironment } from "./plant-ca
 
 interface WorkerEnvironment extends PlantCareCopilotEnvironment {
   ALLOWED_ORIGIN?: string;
+  AI?: Ai;
 }
 
 const repository = new GardenRepository();

@@ -41,9 +41,13 @@ The backend requests a strict JSON schema response for:
 
 The frontend renders the structured fields directly instead of treating the model response as generic chat text.
 
+### Free Production AI Provider
+
+The Cloudflare Workers deployment uses Workers AI through an `env.AI` binding. This keeps the public demo free-first and avoids putting third-party model keys in GitHub Pages or browser code.
+
 ### Local Fallback
 
-If `OPENAI_API_KEY` is not set, the backend returns a clearly labeled local fallback response. This keeps local development usable while making it explicit that the result is not model-generated.
+If Workers AI is unavailable, over the free daily allocation, or not configured in local development, the backend returns a clearly labeled local fallback response. This keeps the demo usable while making it explicit that the result is not model-generated.
 
 ## API
 
@@ -75,12 +79,15 @@ Response:
     "observationsReviewed": 2,
     "latestObservationDate": "2026-08-08"
   },
-  "generatedBy": "openai"
+  "generatedBy": "workers-ai"
 }
 ```
 
 ## Technologies Used
 
+- Cloudflare Workers AI
+- Cloudflare Workers
+- Wrangler
 - OpenAI Responses API
 - Structured Outputs with JSON schema
 - Server-side API key handling
@@ -93,19 +100,35 @@ Response:
 
 ## Environment
 
-Create a local `.env` or export environment variables before starting the API:
+Cloudflare Workers production uses Workers AI:
 
-```bash
-export OPENAI_API_KEY="your_api_key_here"
-export OPENAI_MODEL="gpt-5-mini"
+```json
+{
+  "ai": {
+    "binding": "AI"
+  }
+}
 ```
 
-`OPENAI_MODEL` is optional. The backend defaults to `gpt-5-mini`.
+The default free-first model is:
 
-For GitHub Pages, do not put `OPENAI_API_KEY` in the frontend. Configure the public backend URL in `apps/web/public/app-config.js` and store the real key only in the deployed backend environment. See [GitHub Pages AI Configuration](github-pages-ai-config.md).
+```bash
+CLOUDFLARE_AI_MODEL=@cf/meta/llama-3.1-8b-instruct-fast
+```
+
+OpenAI remains an optional fallback path for later experiments:
+
+```bash
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-5-mini
+```
+
+For GitHub Pages, do not put model provider keys in the frontend. Configure the public backend URL in `apps/web/public/app-config.js`; the deployed Worker handles AI server-side. See [GitHub Pages AI Configuration](github-pages-ai-config.md).
 
 ## Official Documentation References
 
+- Cloudflare Workers AI pricing: https://developers.cloudflare.com/workers-ai/platform/pricing/
+- Cloudflare Workers AI bindings: https://developers.cloudflare.com/workers-ai/configuration/bindings/
 - OpenAI API quickstart: https://platform.openai.com/docs/quickstart/make-your-first-api-request
 - OpenAI Structured Outputs: https://developers.openai.com/api/docs/guides/structured-outputs
 - OpenAI Responses API reference: https://platform.openai.com/docs/api-reference/responses

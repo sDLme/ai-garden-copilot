@@ -85,7 +85,7 @@ import { GardenService } from "../garden.service";
               <div class="recommendation-meta">
                 <span>{{ recommendation.urgency }} urgency</span>
                 <span>{{ recommendation.confidence }} confidence</span>
-                <span>{{ recommendation.generatedBy === "openai" ? "OpenAI" : "Local fallback" }}</span>
+                <span>{{ recommendationSourceLabel(recommendation.generatedBy) }}</span>
               </div>
             </div>
 
@@ -215,6 +215,18 @@ export class PlantProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadPlant();
+  }
+
+  recommendationSourceLabel(source: PlantCareRecommendation["generatedBy"]): string {
+    if (source === "workers-ai") {
+      return "Workers AI";
+    }
+
+    if (source === "openai") {
+      return "OpenAI";
+    }
+
+    return "Local fallback";
   }
 
   saveObservation(): void {

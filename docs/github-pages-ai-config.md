@@ -1,8 +1,8 @@
 # GitHub Pages AI Configuration
 
-GitHub Pages can host the Angular frontend, but it cannot safely store `OPENAI_API_KEY`.
+GitHub Pages can host the Angular frontend, but it cannot safely store model provider API keys.
 
-The frontend must call a deployed backend API. The backend reads `OPENAI_API_KEY` from its own private environment variables and calls OpenAI from the server side.
+The frontend must call a deployed backend API. For the free-first production path, the backend runs on Cloudflare Workers and calls Cloudflare Workers AI through an `env.AI` binding.
 
 ## Runtime Frontend Config
 
@@ -65,29 +65,39 @@ https://sdlme.github.io/ai-garden-copilot/app/
 ```text
 GitHub Pages Angular app
   -> deployed backend API
-      -> OPENAI_API_KEY in backend secret environment
-      -> OpenAI Responses API
+      -> Cloudflare Workers AI binding
       -> structured recommendation response
 ```
 
-## Backend Secret
+## Free AI Provider
 
-The backend host should define:
+The deployed Worker uses Cloudflare Workers AI:
 
-```bash
-OPENAI_API_KEY=your_real_key
-OPENAI_MODEL=gpt-5-mini
+```json
+{
+  "ai": {
+    "binding": "AI"
+  }
+}
 ```
 
-Examples of suitable backend hosts:
+The default model is configured as:
 
-- Cloudflare Workers
-- Vercel Functions
-- Render
-- Fly.io
-- Railway
+```bash
+CLOUDFLARE_AI_MODEL=@cf/meta/llama-3.1-8b-instruct-fast
+```
 
-GitHub repository secrets are useful for GitHub Actions, but they are not runtime secrets for GitHub Pages.
+Workers AI includes a free daily allocation. If that free allocation is exceeded, the API falls back to a local structured recommendation so the portfolio demo remains usable.
+
+## Optional OpenAI Fallback
+
+OpenAI can still be used later as an optional fallback. If enabled, store the key only as a backend secret:
+
+```bash
+npx wrangler secret put OPENAI_API_KEY
+```
+
+GitHub repository secrets are useful for GitHub Actions, but they are not runtime secrets for GitHub Pages. Never put provider keys in `docs/app`, `apps/web/public`, or browser code.
 
 ## Cloudflare Workers Deployment
 
@@ -105,14 +115,6 @@ Install dependencies, then authenticate Wrangler:
 npm install
 npx wrangler login
 ```
-
-Store the OpenAI key as a Cloudflare Worker secret:
-
-```bash
-npx wrangler secret put OPENAI_API_KEY
-```
-
-This step can be skipped during early deployment. Without `OPENAI_API_KEY`, the Worker still serves the garden API and returns a local fallback Copilot recommendation instead of a live OpenAI-generated recommendation.
 
 Deploy the backend:
 

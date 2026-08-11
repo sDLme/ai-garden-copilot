@@ -73,5 +73,5 @@ export interface PlantCareRecommendation {
   missingInformation: string[];
   careNotes: string[];
   contextUsed: RecommendationContextUsed;
-  generatedBy: "openai" | "local-fallback";
+  generatedBy: "workers-ai" | "openai" | "local-fallback";
 }
