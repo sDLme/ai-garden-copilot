@@ -1,9 +1,8 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@garden/shared": ["apps/shared/src/index.ts"]
+      "@garden/shared": ["./apps/shared/src/index.ts"]
     },
     "strict": true,
     "noImplicitOverride": true,

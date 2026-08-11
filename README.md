@@ -69,6 +69,8 @@ Install dependencies:
 npm install
 ```
 
+Use Node.js `^22.22.3`, `^24.15.0`, or newer. The project is currently aligned with Angular 22 and TypeScript 6.
+
 Start the TypeScript API:
 
 ```bash
@@ -97,6 +99,8 @@ The Phase 1 app uses:
 Current Phase 1 implementation includes a shared TypeScript data model, sample garden data, a small Node API, Garden overview screen, Plant Profile screen, and observation history workflow.
 
 See [Phase 1 MVP](docs/phase-1-mvp.md) for MVP boundaries and user journeys.
+
+The Angular implementation uses standalone components, `inject()`, signals, zoneless change detection without `zone.js`, the modern `@angular/build` Vite/esbuild pipeline, and built-in control flow (`@if` / `@for`) instead of legacy structural directives.
 
 ### Phase 2 - LLM Core & Structured Output
 
