@@ -1,6 +1,8 @@
 import { GardenRepository } from "./garden.repository";
 import { CreateObservationInput, ObservationType, PlantQuestionRequest } from "../../shared/src";
 import { PlantCareCopilotService, PlantCareCopilotEnvironment } from "./plant-care-copilot.service";
+import { GardenToolsService } from "./garden-tools.service";
+import { CopilotStreamService } from "./copilot-stream.service";
 
 interface WorkerEnvironment extends PlantCareCopilotEnvironment {
   ALLOWED_ORIGIN?: string;
@@ -8,6 +10,7 @@ interface WorkerEnvironment extends PlantCareCopilotEnvironment {
 }
 
 const repository = new GardenRepository();
+const gardenTools = new GardenToolsService(repository);
 
 const observationTypes = new Set<ObservationType>([
   "watering",
@@ -85,6 +88,45 @@ export default {
         return jsonResponse(recommendation, 200, corsHeaders);
       }
 
+      const recommendationStreamMatch = url.pathname.match(/^\/api\/plants\/([^/]+)\/recommendations\/stream$/);
+      if (request.method === "POST" && recommendationStreamMatch) {
+        const plantId = decodeURIComponent(recommendationStreamMatch[1]);
+        const body = await readJson<PlantQuestionRequest>(request);
+
+        if (!body.question?.trim()) {
+          return jsonResponse({ message: "Question is required" }, 400, corsHeaders);
+        }
+
+        const streamResponse = new CopilotStreamService(repository, gardenTools, env).streamPlantRecommendation(
+          plantId,
+          body.question,
+          body.conversationId
+        );
+        return withCorsHeaders(streamResponse, corsHeaders);
+      }
+
+      const approveMatch = url.pathname.match(/^\/api\/approvals\/([^/]+)\/approve$/);
+      if (request.method === "POST" && approveMatch) {
+        const result = gardenTools.approve(decodeURIComponent(approveMatch[1]));
+
+        if (!result) {
+          return jsonResponse({ message: "Approval not found or no longer pending" }, 404, corsHeaders);
+        }
+
+        return jsonResponse(result, 200, corsHeaders);
+      }
+
+      const rejectMatch = url.pathname.match(/^\/api\/approvals\/([^/]+)\/reject$/);
+      if (request.method === "POST" && rejectMatch) {
+        const result = gardenTools.reject(decodeURIComponent(rejectMatch[1]));
+
+        if (!result) {
+          return jsonResponse({ message: "Approval not found or no longer pending" }, 404, corsHeaders);
+        }
+
+        return jsonResponse(result, 200, corsHeaders);
+      }
+
       return jsonResponse({ message: "Route not found" }, 404, corsHeaders);
     } catch (error) {
       return jsonResponse(
@@ -110,6 +152,20 @@ function createCorsHeaders(request: Request, env: WorkerEnvironment): Headers {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     Vary: "Origin"
+  });
+}
+
+function withCorsHeaders(response: Response, corsHeaders: Headers): Response {
+  const headers = new Headers(response.headers);
+
+  corsHeaders.forEach((value, key) => {
+    headers.set(key, value);
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
   });
 }
 

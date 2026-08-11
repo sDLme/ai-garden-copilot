@@ -2,9 +2,12 @@ import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { GardenRepository } from "./garden.repository";
 import { CreateObservationInput, ObservationType, PlantQuestionRequest } from "../../shared/src";
 import { PlantCareCopilotService } from "./plant-care-copilot.service";
+import { GardenToolsService } from "./garden-tools.service";
+import { CopilotStreamService } from "./copilot-stream.service";
 
 const port = Number(process.env["PORT"] ?? 3333);
 const repository = new GardenRepository();
+const gardenTools = new GardenToolsService(repository);
 const copilotService = new PlantCareCopilotService();
 
 const observationTypes = new Set<ObservationType>([
@@ -93,6 +96,51 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    const recommendationStreamMatch = url.pathname.match(/^\/api\/plants\/([^/]+)\/recommendations\/stream$/);
+    if (request.method === "POST" && recommendationStreamMatch) {
+      const body = await readJson<PlantQuestionRequest>(request);
+
+      if (!body.question?.trim()) {
+        sendJson(response, 400, { message: "Question is required" });
+        return;
+      }
+
+      const streamResponse = new CopilotStreamService(repository, gardenTools, process.env).streamPlantRecommendation(
+        decodeURIComponent(recommendationStreamMatch[1]),
+        body.question,
+        body.conversationId
+      );
+
+      await sendWebResponse(response, streamResponse);
+      return;
+    }
+
+    const approveMatch = url.pathname.match(/^\/api\/approvals\/([^/]+)\/approve$/);
+    if (request.method === "POST" && approveMatch) {
+      const result = gardenTools.approve(decodeURIComponent(approveMatch[1]));
+
+      if (!result) {
+        sendJson(response, 404, { message: "Approval not found or no longer pending" });
+        return;
+      }
+
+      sendJson(response, 200, result);
+      return;
+    }
+
+    const rejectMatch = url.pathname.match(/^\/api\/approvals\/([^/]+)\/reject$/);
+    if (request.method === "POST" && rejectMatch) {
+      const result = gardenTools.reject(decodeURIComponent(rejectMatch[1]));
+
+      if (!result) {
+        sendJson(response, 404, { message: "Approval not found or no longer pending" });
+        return;
+      }
+
+      sendJson(response, 200, result);
+      return;
+    }
+
     sendJson(response, 404, { message: "Route not found" });
   } catch (error) {
     sendJson(response, 500, {
@@ -115,6 +163,33 @@ function setCorsHeaders(response: ServerResponse): void {
 function sendJson(response: ServerResponse, status: number, payload: unknown): void {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
+}
+
+async function sendWebResponse(response: ServerResponse, webResponse: Response): Promise<void> {
+  webResponse.headers.forEach((value, key) => {
+    response.setHeader(key, value);
+  });
+
+  response.writeHead(webResponse.status);
+
+  if (!webResponse.body) {
+    response.end();
+    return;
+  }
+
+  const reader = webResponse.body.getReader();
+
+  for (;;) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    response.write(value);
+  }
+
+  response.end();
 }
 
 async function readJson<T>(request: IncomingMessage): Promise<T> {

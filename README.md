@@ -155,6 +155,10 @@ See [Phase 2 Implementation](docs/phase-2-implementation.md) for the API, schema
 - SSE streaming
 - Human approval UX
 
+Current Phase 3 implementation includes explicit garden tools, streamed Copilot workflow events, conversation IDs, approval-gated observation writes, and an Angular workflow trace UI.
+
+See [Phase 3 Implementation](docs/phase-3-implementation.md) for the streaming API, tool events, approval workflow, technology choices, and phase boundary.
+
 ### Phase 4 - Knowledge, RAG & Context Engineering
 
 - Embeddings

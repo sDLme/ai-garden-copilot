@@ -136,6 +136,10 @@ textarea {
   margin: 44px 0 18px;
 }
 
+.section-heading.compact {
+  margin: 0 0 18px;
+}
+
 .section-heading h2,
 .info-panel h2 {
   margin: 0;
@@ -264,6 +268,80 @@ button.button.primary {
   border: 1px solid var(--line);
   background: #fff;
   padding: clamp(22px, 4vw, 32px);
+}
+
+.agent-trace,
+.approval-panel {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: clamp(20px, 4vw, 28px);
+}
+
+.trace-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trace-list li {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.18fr) minmax(160px, 0.28fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-top: 1px solid var(--line);
+  padding: 12px 0 0;
+}
+
+.trace-list span {
+  width: fit-content;
+  border: 1px solid var(--line);
+  background: #f7faf5;
+  color: var(--leaf-dark);
+  font-size: 0.75rem;
+  font-weight: 780;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.trace-list strong {
+  font-size: 0.95rem;
+}
+
+.trace-list p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.approval-card {
+  border: 1px solid var(--line);
+  background: #fbfbf8;
+  padding: 18px;
+}
+
+.approval-card h3 {
+  margin: 0;
+}
+
+.approval-card p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .recommendation-header {
@@ -405,8 +483,13 @@ textarea {
   .plant-grid,
   .profile-grid,
   .observations-layout,
+  .approval-grid,
   .recommendation-header,
   .recommendation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-list li {
     grid-template-columns: 1fr;
   }
 

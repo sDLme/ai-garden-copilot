@@ -18,7 +18,7 @@ export interface PlantCareCopilotEnvironment {
 }
 
 export class PlantCareCopilotService {
-  constructor(private readonly environment: PlantCareCopilotEnvironment = process.env) {}
+  constructor(private readonly environment: PlantCareCopilotEnvironment = readProcessEnvironment()) {}
 
   async recommend(plant: Plant, question: string): Promise<PlantCareRecommendation> {
     const normalizedQuestion = question.trim();
@@ -435,4 +435,14 @@ function getString(value: unknown, fallback: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readProcessEnvironment(): PlantCareCopilotEnvironment {
+  const runtime = globalThis as typeof globalThis & {
+    process?: {
+      env?: PlantCareCopilotEnvironment;
+    };
+  };
+
+  return runtime.process?.env ?? {};
 }

@@ -1,8 +1,16 @@
 import { DatePipe } from "@angular/common";
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { Component, inject, OnDestroy, OnInit, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { ActivatedRoute, RouterLink } from "@angular/router";
-import { CreateObservationInput, ObservationType, Plant, PlantCareRecommendation } from "@garden/shared";
+import {
+  ApprovalRequest,
+  CopilotStreamEvent,
+  CreateObservationInput,
+  ObservationType,
+  Plant,
+  PlantCareRecommendation
+} from "@garden/shared";
+import { Subscription } from "rxjs";
 import { GardenService } from "../garden.service";
 
 @Component({
@@ -72,8 +80,30 @@ import { GardenService } from "../garden.service";
             @if (copilotError()) {
               <p class="error-text">{{ copilotError() }}</p>
             }
+
+            @if (conversationId()) {
+              <p class="context-note">Conversation: {{ conversationId() }}</p>
+            }
           </article>
         </section>
+
+        @if (copilotEvents().length) {
+          <section class="agent-trace" aria-label="Copilot tool trace">
+            <div class="section-heading compact">
+              <h2>Copilot Workflow</h2>
+              <p>Tool calls, retrieved context, streamed events, and controlled actions.</p>
+            </div>
+            <ol class="trace-list">
+              @for (event of copilotEvents(); track event.id) {
+                <li>
+                  <span>{{ event.kind }}</span>
+                  <strong>{{ event.title }}</strong>
+                  <p>{{ event.detail }}</p>
+                </li>
+              }
+            </ol>
+          </section>
+        }
 
         @if (recommendation(); as recommendation) {
           <section class="recommendation-panel" aria-label="Copilot recommendation">
@@ -134,6 +164,43 @@ import { GardenService } from "../garden.service";
           </section>
         }
 
+        @if (pendingApprovals().length) {
+          <section class="approval-panel" aria-label="Pending approvals">
+            <div class="section-heading compact">
+              <h2>Approval Queue</h2>
+              <p>Copilot cannot write to garden history without a human decision.</p>
+            </div>
+
+            <div class="approval-grid">
+              @for (approval of pendingApprovals(); track approval.id) {
+                <article class="approval-card">
+                  <p class="eyebrow">Human-in-the-loop</p>
+                  <h3>{{ approval.label }}</h3>
+                  <p>{{ approval.description }}</p>
+                  <dl>
+                    <div>
+                      <dt>Type</dt>
+                      <dd>{{ approval.input.type }}</dd>
+                    </div>
+                    <div>
+                      <dt>Summary</dt>
+                      <dd>{{ approval.input.summary }}</dd>
+                    </div>
+                  </dl>
+                  <div class="approval-actions">
+                    <button class="button primary" type="button" (click)="approveObservation(approval)">
+                      Approve
+                    </button>
+                    <button class="button" type="button" (click)="rejectObservation(approval)">
+                      Reject
+                    </button>
+                  </div>
+                </article>
+              }
+            </div>
+          </section>
+        }
+
         <section class="observations-layout">
           <article class="info-panel">
             <h2>Add Observation</h2>
@@ -183,7 +250,7 @@ import { GardenService } from "../garden.service";
     }
   `
 })
-export class PlantProfileComponent implements OnInit {
+export class PlantProfileComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly gardenService = inject(GardenService);
   private readonly formBuilder = inject(FormBuilder);
@@ -210,11 +277,19 @@ export class PlantProfileComponent implements OnInit {
   });
 
   readonly recommendation = signal<PlantCareRecommendation | null>(null);
+  readonly conversationId = signal("");
+  readonly copilotEvents = signal<CopilotTraceItem[]>([]);
+  readonly pendingApprovals = signal<ApprovalRequest[]>([]);
   readonly isAskingCopilot = signal(false);
   readonly copilotError = signal("");
+  private streamSubscription?: Subscription;
 
   ngOnInit(): void {
     this.loadPlant();
+  }
+
+  ngOnDestroy(): void {
+    this.streamSubscription?.unsubscribe();
   }
 
   recommendationSourceLabel(source: PlantCareRecommendation["generatedBy"]): string {
@@ -256,19 +331,64 @@ export class PlantProfileComponent implements OnInit {
 
     this.isAskingCopilot.set(true);
     this.copilotError.set("");
+    this.recommendation.set(null);
+    this.pendingApprovals.set([]);
+    this.copilotEvents.set([]);
+    this.streamSubscription?.unsubscribe();
 
-    this.gardenService
-      .askPlantQuestion(currentPlant.id, this.questionForm.getRawValue())
+    this.streamSubscription = this.gardenService
+      .streamPlantQuestion(currentPlant.id, {
+        ...this.questionForm.getRawValue(),
+        conversationId: this.conversationId() || undefined
+      })
       .subscribe({
-        next: (recommendation) => {
-          this.recommendation.set(recommendation);
+        next: (event) => this.handleCopilotEvent(event),
+        error: () => {
+          this.copilotError.set("Copilot stream stopped unexpectedly. Check the API server and try again.");
           this.isAskingCopilot.set(false);
         },
-        error: () => {
-          this.copilotError.set("Copilot could not prepare a recommendation. Check the API server and try again.");
+        complete: () => {
           this.isAskingCopilot.set(false);
         }
       });
+  }
+
+  approveObservation(approval: ApprovalRequest): void {
+    this.gardenService.approveObservation(approval.id).subscribe({
+      next: (result) => {
+        this.pendingApprovals.update((approvals) => approvals.filter((item) => item.id !== approval.id));
+
+        if (result.observation) {
+          const currentPlant = this.plant();
+
+          if (currentPlant) {
+            this.plant.set({
+              ...currentPlant,
+              observations: [result.observation, ...currentPlant.observations]
+            });
+          }
+
+          this.addTraceItem("approval", "Observation saved", result.observation.summary);
+        }
+      },
+      error: () => {
+        this.copilotError.set("Approval could not be applied. The request may have expired; ask Copilot again.");
+        this.addTraceItem("error", "Approval failed", approval.label);
+      }
+    });
+  }
+
+  rejectObservation(approval: ApprovalRequest): void {
+    this.gardenService.rejectObservation(approval.id).subscribe({
+      next: () => {
+        this.pendingApprovals.update((approvals) => approvals.filter((item) => item.id !== approval.id));
+        this.addTraceItem("approval", "Approval rejected", approval.label);
+      },
+      error: () => {
+        this.copilotError.set("Approval could not be rejected. The request may have expired; ask Copilot again.");
+        this.addTraceItem("error", "Approval rejection failed", approval.label);
+      }
+    });
   }
 
   private loadPlant(): void {
@@ -282,4 +402,61 @@ export class PlantProfileComponent implements OnInit {
       this.plant.set(plant);
     });
   }
+
+  private handleCopilotEvent(event: CopilotStreamEvent): void {
+    if (event.type === "conversation-started") {
+      this.conversationId.set(event.conversationId);
+      this.addTraceItem("state", "Conversation started", event.conversationId);
+      return;
+    }
+
+    if (event.type === "tool-call") {
+      this.addTraceItem("tool", `Calling ${event.toolCall.name}`, JSON.stringify(event.toolCall.input));
+      return;
+    }
+
+    if (event.type === "tool-result") {
+      this.addTraceItem("result", "Tool result", event.result.summary);
+      return;
+    }
+
+    if (event.type === "recommendation") {
+      this.recommendation.set(event.recommendation);
+      this.addTraceItem("ai", "Structured recommendation ready", this.recommendationSourceLabel(event.recommendation.generatedBy));
+      return;
+    }
+
+    if (event.type === "approval-request") {
+      this.pendingApprovals.update((approvals) => [...approvals, event.approval]);
+      this.addTraceItem("approval", "Approval requested", event.approval.label);
+      return;
+    }
+
+    if (event.type === "error") {
+      this.copilotError.set(event.message);
+      this.addTraceItem("error", "Stream error", event.message);
+      return;
+    }
+
+    this.addTraceItem("state", "Workflow complete", event.conversationId);
+  }
+
+  private addTraceItem(kind: CopilotTraceItem["kind"], title: string, detail: string): void {
+    this.copilotEvents.update((events) => [
+      ...events,
+      {
+        id: `${kind}-${crypto.randomUUID()}`,
+        kind,
+        title,
+        detail
+      }
+    ]);
+  }
+}
+
+interface CopilotTraceItem {
+  id: string;
+  kind: "state" | "tool" | "result" | "ai" | "approval" | "error";
+  title: string;
+  detail: string;
 }

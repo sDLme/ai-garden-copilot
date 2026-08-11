@@ -49,6 +49,7 @@ export type RecommendationConfidence = "low" | "medium" | "high";
 
 export interface PlantQuestionRequest {
   question: string;
+  conversationId?: string;
 }
 
 export interface RecommendedAction {
@@ -75,3 +76,63 @@ export interface PlantCareRecommendation {
   contextUsed: RecommendationContextUsed;
   generatedBy: "workers-ai" | "openai" | "local-fallback";
 }
+
+export type GardenToolName = "listPlants" | "getPlant" | "saveObservation";
+
+export interface GardenToolCall {
+  id: string;
+  name: GardenToolName;
+  status: "running" | "completed" | "failed";
+  input: Record<string, unknown>;
+}
+
+export interface GardenToolResult {
+  toolCallId: string;
+  summary: string;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  plantId: string;
+  action: "saveObservation";
+  label: string;
+  description: string;
+  input: CreateObservationInput;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
+export interface ApprovalDecisionResponse {
+  approval: ApprovalRequest;
+  observation?: Observation;
+}
+
+export type CopilotStreamEvent =
+  | {
+      type: "conversation-started";
+      conversationId: string;
+    }
+  | {
+      type: "tool-call";
+      toolCall: GardenToolCall;
+    }
+  | {
+      type: "tool-result";
+      result: GardenToolResult;
+    }
+  | {
+      type: "recommendation";
+      recommendation: PlantCareRecommendation;
+    }
+  | {
+      type: "approval-request";
+      approval: ApprovalRequest;
+    }
+  | {
+      type: "done";
+      conversationId: string;
+    }
+  | {
+      type: "error";
+      message: string;
+    };
