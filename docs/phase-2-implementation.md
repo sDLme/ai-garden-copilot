@@ -102,6 +102,8 @@ export OPENAI_MODEL="gpt-5-mini"
 
 `OPENAI_MODEL` is optional. The backend defaults to `gpt-5-mini`.
 
+For GitHub Pages, do not put `OPENAI_API_KEY` in the frontend. Configure the public backend URL in `apps/web/public/app-config.js` and store the real key only in the deployed backend environment. See [GitHub Pages AI Configuration](github-pages-ai-config.md).
+
 ## Official Documentation References
 
 - OpenAI API quickstart: https://platform.openai.com/docs/quickstart/make-your-first-api-request

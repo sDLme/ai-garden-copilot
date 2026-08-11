@@ -9,10 +9,11 @@ import {
   PlantCareRecommendation,
   PlantQuestionRequest
 } from "@garden/shared";
+import { getApiBaseUrl } from "./app-config";
 
 @Injectable({ providedIn: "root" })
 export class GardenService {
-  private readonly apiBase = "http://localhost:3333/api";
+  private readonly apiBase = getApiBaseUrl();
 
   constructor(private readonly http: HttpClient) {}
 

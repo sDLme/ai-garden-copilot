@@ -88,6 +88,16 @@ The Phase 1 app uses:
 - Angular frontend: [http://localhost:4200](http://localhost:4200)
 - Node/TypeScript API: [http://localhost:3333/api/garden](http://localhost:3333/api/garden)
 
+For GitHub Pages, the Angular app reads its backend URL from `apps/web/public/app-config.js`. See [GitHub Pages AI Configuration](docs/github-pages-ai-config.md) for the safe production setup.
+
+Build the GitHub Pages app:
+
+```bash
+npm run build:pages
+```
+
+This publishes the Angular app into `docs/app`, which is served at [https://sdlme.github.io/ai-garden-copilot/app/](https://sdlme.github.io/ai-garden-copilot/app/).
+
 ## Roadmap
 
 ### Phase 1 - Foundation & MVP

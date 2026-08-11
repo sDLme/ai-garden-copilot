@@ -9,6 +9,7 @@
     "build": "tsc -b apps/api && ng build web",
     "build:api": "tsc -b apps/api",
     "build:web": "ng build web",
+    "build:pages": "node scripts/build-github-pages.mjs",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "engines": {
