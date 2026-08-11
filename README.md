@@ -100,6 +100,8 @@ Current Phase 1 implementation includes a shared TypeScript data model, sample g
 
 See [Phase 1 MVP](docs/phase-1-mvp.md) for MVP boundaries and user journeys.
 
+See [Phase 1 Implementation](docs/phase-1-implementation.md) for implemented features, technology choices, architecture, and verification notes.
+
 The Angular implementation uses standalone components, `inject()`, signals, zoneless change detection without `zone.js`, the modern `@angular/build` Vite/esbuild pipeline, and built-in control flow (`@if` / `@for`) instead of legacy structural directives.
 
 ### Phase 2 - LLM Core & Structured Output
