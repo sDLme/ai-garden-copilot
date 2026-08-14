@@ -49,7 +49,7 @@ export const plantCareRecommendationSchema = {
     contextUsed: {
       type: "object",
       additionalProperties: false,
-      required: ["observationsReviewed", "latestObservationDate", "knowledgeSourcesReviewed", "sources"],
+      required: ["observationsReviewed", "latestObservationDate", "knowledgeSourcesReviewed", "sources", "safetyChecks"],
       properties: {
         observationsReviewed: { type: "number" },
         latestObservationDate: { type: "string" },
@@ -65,6 +65,45 @@ export const plantCareRecommendationSchema = {
               title: { type: "string" },
               excerpt: { type: "string" },
               relevanceScore: { type: "number" }
+            }
+          }
+        },
+        weather: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "location",
+            "observedAt",
+            "temperatureC",
+            "relativeHumidity",
+            "precipitationMm",
+            "windGustKmh",
+            "precipitationProbabilityMax",
+            "source",
+            "summary"
+          ],
+          properties: {
+            location: { type: "string" },
+            observedAt: { type: "string" },
+            temperatureC: { type: ["number", "null"] },
+            relativeHumidity: { type: ["number", "null"] },
+            precipitationMm: { type: ["number", "null"] },
+            windGustKmh: { type: ["number", "null"] },
+            precipitationProbabilityMax: { type: ["number", "null"] },
+            source: { type: "string", enum: ["open-meteo", "local-fallback"] },
+            summary: { type: "string" }
+          }
+        },
+        safetyChecks: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "severity", "message"],
+            properties: {
+              id: { type: "string" },
+              severity: { type: "string", enum: ["info", "warning", "blocked"] },
+              message: { type: "string" }
             }
           }
         }

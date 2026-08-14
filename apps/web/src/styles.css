@@ -415,6 +415,24 @@ button.button.primary {
   margin: 4px 0 8px;
 }
 
+.context-box {
+  border: 1px solid var(--line);
+  background: #fbfbf8;
+  padding: 14px;
+}
+
+.context-box p {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 8px 0;
+}
+
+.context-box small {
+  color: var(--leaf-dark);
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
 .error-text {
   color: #9f2238;
   font-weight: 700;

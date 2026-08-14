@@ -161,6 +161,27 @@ import { GardenService } from "../garden.service";
                   }
                 </p>
 
+                @if (recommendation.contextUsed.weather; as weather) {
+                  <h3>Weather</h3>
+                  <div class="context-box">
+                    <strong>{{ weather.location }}</strong>
+                    <p>{{ weather.summary }}</p>
+                    <small>{{ weather.source }}</small>
+                  </div>
+                }
+
+                @if (recommendation.contextUsed.safetyChecks.length) {
+                  <h3>Guardrails</h3>
+                  <ul class="compact-list">
+                    @for (check of recommendation.contextUsed.safetyChecks; track check.id) {
+                      <li>
+                        <strong>{{ check.severity }}</strong>
+                        {{ check.message }}
+                      </li>
+                    }
+                  </ul>
+                }
+
                 @if (recommendation.contextUsed.sources.length) {
                   <h3>Sources</h3>
                   <ol class="source-list">
@@ -425,7 +446,14 @@ export class PlantProfileComponent implements OnInit, OnDestroy {
     }
 
     if (event.type === "tool-call") {
-      const kind = event.toolCall.name === "retrieveKnowledge" ? "knowledge" : "tool";
+      const kind =
+        event.toolCall.name === "retrieveKnowledge"
+          ? "knowledge"
+          : event.toolCall.name === "getWeather"
+            ? "weather"
+            : event.toolCall.name === "runSafetyCheck"
+              ? "safety"
+              : "tool";
       this.addTraceItem(kind, `Calling ${event.toolCall.name}`, JSON.stringify(event.toolCall.input));
       return;
     }
@@ -471,7 +499,7 @@ export class PlantProfileComponent implements OnInit, OnDestroy {
 
 interface CopilotTraceItem {
   id: string;
-  kind: "state" | "tool" | "knowledge" | "result" | "ai" | "approval" | "error";
+  kind: "state" | "tool" | "knowledge" | "weather" | "safety" | "result" | "ai" | "approval" | "error";
   title: string;
   detail: string;
 }

@@ -179,6 +179,10 @@ See [Phase 4 Implementation](docs/phase-4-implementation.md) for retrieval strat
 - Evaluations
 - Guardrails
 
+Current Phase 5 implementation includes an agent-style SSE orchestration loop, Open-Meteo weather tool, safety guardrails, post-answer validation, MCP-style `/mcp` tool endpoint, Weather and Guardrails UI, and a Phase 5 eval smoke suite.
+
+See [Phase 5 Implementation](docs/phase-5-implementation.md) for the workflow, MCP surface, eval checks, official references, and phase boundary.
+
 ### Phase 6 - AI-Native UX & Portfolio Release
 
 - Photo and vision support

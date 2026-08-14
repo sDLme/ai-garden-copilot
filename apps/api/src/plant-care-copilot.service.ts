@@ -1,4 +1,4 @@
-import { KnowledgeContext, Plant, PlantCareRecommendation } from "../../shared/src";
+import { KnowledgeContext, Plant, PlantCareRecommendation, SafetyCheck, WeatherContext } from "../../shared/src";
 import { buildPlantCareInput, plantCareSystemInstructions } from "./plant-context.prompt";
 import { plantCareRecommendationSchema } from "./plant-care-recommendation.schema";
 
@@ -20,27 +20,42 @@ export interface PlantCareCopilotEnvironment {
 export class PlantCareCopilotService {
   constructor(private readonly environment: PlantCareCopilotEnvironment = readProcessEnvironment()) {}
 
-  async recommend(plant: Plant, question: string, knowledgeContext: KnowledgeContext[] = []): Promise<PlantCareRecommendation> {
+  async recommend(
+    plant: Plant,
+    question: string,
+    knowledgeContext: KnowledgeContext[] = [],
+    weatherContext?: WeatherContext,
+    safetyChecks: SafetyCheck[] = []
+  ): Promise<PlantCareRecommendation> {
     const normalizedQuestion = question.trim();
     const workersAi = this.environment.AI;
     const apiKey = this.environment.OPENAI_API_KEY;
 
     if (workersAi) {
       try {
-        return await this.recommendWithWorkersAi(workersAi, plant, normalizedQuestion, knowledgeContext);
+        return await this.recommendWithWorkersAi(workersAi, plant, normalizedQuestion, knowledgeContext, weatherContext, safetyChecks);
       } catch (error) {
         console.warn("Workers AI recommendation failed", error);
         return this.createLocalFallback(
           plant,
           normalizedQuestion,
           "Workers AI is unavailable or the free daily quota was reached.",
-          knowledgeContext
+          knowledgeContext,
+          weatherContext,
+          safetyChecks
         );
       }
     }
 
     if (!apiKey) {
-      return this.createLocalFallback(plant, normalizedQuestion, "No live AI provider is configured.", knowledgeContext);
+      return this.createLocalFallback(
+        plant,
+        normalizedQuestion,
+        "No live AI provider is configured.",
+        knowledgeContext,
+        weatherContext,
+        safetyChecks
+      );
     }
 
     const response = await fetch(openAiResponsesUrl, {
@@ -58,7 +73,7 @@ export class PlantCareCopilotService {
           },
           {
             role: "user",
-            content: buildPlantCareInput(plant, normalizedQuestion, knowledgeContext)
+            content: buildPlantCareInput(plant, normalizedQuestion, knowledgeContext, weatherContext, safetyChecks)
           }
         ],
         text: {
@@ -85,7 +100,7 @@ export class PlantCareCopilotService {
     }
 
     return {
-      ...withTrustedContext(parseRecommendation(outputText), plant, normalizedQuestion, knowledgeContext),
+      ...withTrustedContext(parseRecommendation(outputText), plant, normalizedQuestion, knowledgeContext, weatherContext, safetyChecks),
       generatedBy: "openai"
     };
   }
@@ -94,7 +109,9 @@ export class PlantCareCopilotService {
     workersAi: WorkersAiBinding,
     plant: Plant,
     question: string,
-    knowledgeContext: KnowledgeContext[]
+    knowledgeContext: KnowledgeContext[],
+    weatherContext: WeatherContext | undefined,
+    safetyChecks: SafetyCheck[]
   ): Promise<PlantCareRecommendation> {
     const response = (await workersAi.run(this.environment.CLOUDFLARE_AI_MODEL ?? fallbackWorkersAiModel, {
       messages: [
@@ -105,12 +122,13 @@ export class PlantCareCopilotService {
             "Return only valid JSON. Do not wrap the response in markdown.",
             "Use string confidence values only: low, medium, or high.",
             "Every recommended action must include label, rationale, timing, and requiresApproval.",
-            "Copy the supplied retrieved garden knowledge sources into contextUsed.sources."
+            "Copy the supplied retrieved garden knowledge sources into contextUsed.sources.",
+            "Copy the supplied weather and safety checks into contextUsed."
           ].join(" ")
         },
         {
           role: "user",
-          content: buildPlantCareInput(plant, question, knowledgeContext)
+          content: buildPlantCareInput(plant, question, knowledgeContext, weatherContext, safetyChecks)
         }
       ],
       max_tokens: 700,
@@ -128,7 +146,14 @@ export class PlantCareCopilotService {
     }
 
     return {
-      ...withTrustedContext(parseWorkersAiRecommendation(outputText, plant, question), plant, question, knowledgeContext),
+      ...withTrustedContext(
+        parseWorkersAiRecommendation(outputText, plant, question),
+        plant,
+        question,
+        knowledgeContext,
+        weatherContext,
+        safetyChecks
+      ),
       generatedBy: "workers-ai"
     };
   }
@@ -137,7 +162,9 @@ export class PlantCareCopilotService {
     plant: Plant,
     question: string,
     reason: string,
-    knowledgeContext: KnowledgeContext[] = []
+    knowledgeContext: KnowledgeContext[] = [],
+    weatherContext?: WeatherContext,
+    safetyChecks: SafetyCheck[] = []
   ): PlantCareRecommendation {
     const latestObservation = plant.observations[0];
 
@@ -167,13 +194,17 @@ export class PlantCareCopilotService {
       careNotes: [
         "This is a local fallback response, not a model-generated recommendation.",
         "The deployed app can use Cloudflare Workers AI when the free daily allocation is available.",
+        ...(weatherContext ? [`Weather context: ${weatherContext.summary}`] : []),
+        ...safetyChecks.map((check) => `Guardrail: ${check.message}`),
         ...knowledgeContext.map((source) => `${source.title}: ${source.excerpt}`)
       ],
       contextUsed: {
         observationsReviewed: plant.observations.length,
         latestObservationDate: latestObservation?.observedAt ?? "",
         knowledgeSourcesReviewed: knowledgeContext.length,
-        sources: knowledgeContext
+        sources: knowledgeContext,
+        weather: weatherContext,
+        safetyChecks
       },
       generatedBy: "local-fallback"
     };
@@ -290,17 +321,20 @@ function createStructuredRecommendationFromWorkersAiText(
   question: string
 ): Omit<PlantCareRecommendation, "generatedBy"> {
   const latestObservation = plant.observations[0];
+  const responseSnippet = createResponseSnippet(outputText);
 
   return {
     plantId: plant.id,
     question,
-    summary: outputText.trim(),
+    summary: looksLikeJson(outputText)
+      ? `Workers AI returned a partial structured response for ${plant.nickname}; the backend normalized it safely.`
+      : responseSnippet,
     urgency: "medium",
     confidence: "medium",
     recommendedActions: [
       {
         label: "Use the Workers AI recommendation as guidance",
-        rationale: outputText.trim(),
+        rationale: responseSnippet,
         timing: "Today",
         requiresApproval: false
       },
@@ -320,16 +354,34 @@ function createStructuredRecommendationFromWorkersAiText(
       observationsReviewed: plant.observations.length,
       latestObservationDate: latestObservation?.observedAt ?? "",
       knowledgeSourcesReviewed: 0,
-      sources: []
+      sources: [],
+      safetyChecks: []
     }
   };
+}
+
+function createResponseSnippet(outputText: string): string {
+  const normalized = outputText.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return "Workers AI returned an empty response, so the backend normalized a cautious recommendation.";
+  }
+
+  return normalized.length > 280 ? `${normalized.slice(0, 277)}...` : normalized;
+}
+
+function looksLikeJson(outputText: string): boolean {
+  const trimmed = outputText.trim();
+  return trimmed.startsWith("{") || trimmed.startsWith("[") || trimmed.startsWith("```json");
 }
 
 function withTrustedContext(
   recommendation: Omit<PlantCareRecommendation, "generatedBy">,
   plant: Plant,
   question: string,
-  knowledgeContext: KnowledgeContext[]
+  knowledgeContext: KnowledgeContext[],
+  weatherContext: WeatherContext | undefined,
+  safetyChecks: SafetyCheck[]
 ): Omit<PlantCareRecommendation, "generatedBy"> {
   const latestObservation = plant.observations[0];
 
@@ -341,7 +393,9 @@ function withTrustedContext(
       observationsReviewed: plant.observations.length,
       latestObservationDate: latestObservation?.observedAt ?? "",
       knowledgeSourcesReviewed: knowledgeContext.length,
-      sources: knowledgeContext
+      sources: knowledgeContext,
+      weather: weatherContext,
+      safetyChecks
     }
   };
 }
@@ -392,7 +446,8 @@ function normalizeWorkersAiRecommendation(
       observationsReviewed: plant.observations.length,
       latestObservationDate: latestObservation?.observedAt ?? "",
       knowledgeSourcesReviewed: 0,
-      sources: []
+      sources: [],
+      safetyChecks: []
     }
   };
 }

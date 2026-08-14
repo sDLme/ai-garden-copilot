@@ -75,11 +75,33 @@ export interface KnowledgeContext {
   relevanceScore: number;
 }
 
+export interface WeatherContext {
+  location: string;
+  observedAt: string;
+  temperatureC: number | null;
+  relativeHumidity: number | null;
+  precipitationMm: number | null;
+  windGustKmh: number | null;
+  precipitationProbabilityMax: number | null;
+  source: "open-meteo" | "local-fallback";
+  summary: string;
+}
+
+export type SafetySeverity = "info" | "warning" | "blocked";
+
+export interface SafetyCheck {
+  id: string;
+  severity: SafetySeverity;
+  message: string;
+}
+
 export interface RecommendationContextUsed {
   observationsReviewed: number;
   latestObservationDate: string;
   knowledgeSourcesReviewed: number;
   sources: KnowledgeContext[];
+  weather?: WeatherContext;
+  safetyChecks: SafetyCheck[];
 }
 
 export interface PlantCareRecommendation {
@@ -95,7 +117,13 @@ export interface PlantCareRecommendation {
   generatedBy: "workers-ai" | "openai" | "local-fallback";
 }
 
-export type GardenToolName = "listPlants" | "getPlant" | "retrieveKnowledge" | "saveObservation";
+export type GardenToolName =
+  | "listPlants"
+  | "getPlant"
+  | "retrieveKnowledge"
+  | "getWeather"
+  | "runSafetyCheck"
+  | "saveObservation";
 
 export interface GardenToolCall {
   id: string;

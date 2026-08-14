@@ -3,6 +3,10 @@ import { CreateObservationInput, ObservationType, PlantQuestionRequest } from ".
 import { PlantCareCopilotService, PlantCareCopilotEnvironment } from "./plant-care-copilot.service";
 import { GardenToolsService } from "./garden-tools.service";
 import { CopilotStreamService } from "./copilot-stream.service";
+import { GardenMcpService, getMcpMetadata } from "./mcp.service";
+import { GardenKnowledgeService } from "./garden-knowledge.service";
+import { SafetyService } from "./safety.service";
+import { WeatherService } from "./weather.service";
 
 interface WorkerEnvironment extends PlantCareCopilotEnvironment {
   ALLOWED_ORIGIN?: string;
@@ -38,6 +42,16 @@ export default {
 
       if (request.method === "GET" && url.pathname === "/api/plants") {
         return jsonResponse(repository.listPlants(), 200, corsHeaders);
+      }
+
+      if (request.method === "GET" && url.pathname === "/mcp") {
+        return jsonResponse(getMcpMetadata(), 200, corsHeaders);
+      }
+
+      if (request.method === "POST" && url.pathname === "/mcp") {
+        const body = await readJson<Parameters<GardenMcpService["handle"]>[0]>(request);
+        const result = await new GardenMcpService(repository, env).handle(body);
+        return jsonResponse(result, 200, corsHeaders);
       }
 
       const plantMatch = url.pathname.match(/^\/api\/plants\/([^/]+)$/);
@@ -83,8 +97,27 @@ export default {
           return jsonResponse({ message: "Question is required" }, 400, corsHeaders);
         }
 
+        const knowledgeContext = await new GardenKnowledgeService(env).retrieve(body.question, plant);
+        const weatherContext = await new WeatherService().getGardenWeather(repository.getGarden());
+        const safetyService = new SafetyService();
+        const safetyChecks = safetyService.assessQuestion(body.question, plant, weatherContext);
         const copilotService = new PlantCareCopilotService(env);
-        const recommendation = await copilotService.recommend(plant, body.question);
+        const recommendation = await copilotService.recommend(
+          plant,
+          body.question,
+          knowledgeContext,
+          weatherContext,
+          safetyChecks
+        );
+        const postRecommendationSafetyChecks = safetyService.validateRecommendation(recommendation);
+
+        if (postRecommendationSafetyChecks.length) {
+          recommendation.contextUsed.safetyChecks = [
+            ...recommendation.contextUsed.safetyChecks,
+            ...postRecommendationSafetyChecks
+          ];
+        }
+
         return jsonResponse(recommendation, 200, corsHeaders);
       }
 

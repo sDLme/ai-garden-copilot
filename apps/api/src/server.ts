@@ -4,6 +4,10 @@ import { CreateObservationInput, ObservationType, PlantQuestionRequest } from ".
 import { PlantCareCopilotService } from "./plant-care-copilot.service";
 import { GardenToolsService } from "./garden-tools.service";
 import { CopilotStreamService } from "./copilot-stream.service";
+import { GardenMcpService, getMcpMetadata } from "./mcp.service";
+import { GardenKnowledgeService } from "./garden-knowledge.service";
+import { SafetyService } from "./safety.service";
+import { WeatherService } from "./weather.service";
 
 const port = Number(process.env["PORT"] ?? 3333);
 const repository = new GardenRepository();
@@ -38,6 +42,18 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "GET" && url.pathname === "/api/plants") {
       sendJson(response, 200, repository.listPlants());
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/mcp") {
+      sendJson(response, 200, getMcpMetadata());
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/mcp") {
+      const body = await readJson<Parameters<GardenMcpService["handle"]>[0]>(request);
+      const result = await new GardenMcpService(repository, process.env).handle(body);
+      sendJson(response, 200, result);
       return;
     }
 
@@ -91,7 +107,20 @@ const server = createServer(async (request, response) => {
         return;
       }
 
-      const recommendation = await copilotService.recommend(plant, body.question);
+      const knowledgeContext = await new GardenKnowledgeService(process.env).retrieve(body.question, plant);
+      const weatherContext = await new WeatherService().getGardenWeather(repository.getGarden());
+      const safetyService = new SafetyService();
+      const safetyChecks = safetyService.assessQuestion(body.question, plant, weatherContext);
+      const recommendation = await copilotService.recommend(plant, body.question, knowledgeContext, weatherContext, safetyChecks);
+      const postRecommendationSafetyChecks = safetyService.validateRecommendation(recommendation);
+
+      if (postRecommendationSafetyChecks.length) {
+        recommendation.contextUsed.safetyChecks = [
+          ...recommendation.contextUsed.safetyChecks,
+          ...postRecommendationSafetyChecks
+        ];
+      }
+
       sendJson(response, 200, recommendation);
       return;
     }

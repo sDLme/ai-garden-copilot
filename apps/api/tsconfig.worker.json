@@ -10,9 +10,12 @@
     "src/garden-knowledge.service.ts",
     "src/garden-tools.service.ts",
     "src/garden.repository.ts",
+    "src/mcp.service.ts",
     "src/plant-care-copilot.service.ts",
     "src/plant-care-recommendation.schema.ts",
     "src/plant-context.prompt.ts",
+    "src/safety.service.ts",
+    "src/weather.service.ts",
     "../shared/src/**/*.ts"
   ],
   "exclude": []

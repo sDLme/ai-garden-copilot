@@ -3,6 +3,8 @@ import { GardenRepository } from "./garden.repository";
 import { GardenToolsService } from "./garden-tools.service";
 import { GardenKnowledgeService } from "./garden-knowledge.service";
 import { PlantCareCopilotService, PlantCareCopilotEnvironment } from "./plant-care-copilot.service";
+import { SafetyService } from "./safety.service";
+import { WeatherService } from "./weather.service";
 
 export class CopilotStreamService {
   constructor(
@@ -62,7 +64,50 @@ export class CopilotStreamService {
             }
           });
 
-          const recommendation = await new PlantCareCopilotService(this.environment).recommend(plant, question, knowledgeContext);
+          const getWeatherCall = this.gardenTools.createToolCall("getWeather", {
+            location: this.repository.getGarden().location
+          });
+          await writer.send({ type: "tool-call", toolCall: getWeatherCall });
+          const weatherContext = await new WeatherService().getGardenWeather(this.repository.getGarden());
+          await writer.send({
+            type: "tool-result",
+            result: {
+              toolCallId: getWeatherCall.id,
+              summary: weatherContext.summary
+            }
+          });
+
+          const runSafetyCheckCall = this.gardenTools.createToolCall("runSafetyCheck", {
+            plantId,
+            question
+          });
+          await writer.send({ type: "tool-call", toolCall: runSafetyCheckCall });
+          const safetyService = new SafetyService();
+          const safetyChecks = safetyService.assessQuestion(question, plant, weatherContext);
+          await writer.send({
+            type: "tool-result",
+            result: {
+              toolCallId: runSafetyCheckCall.id,
+              summary: `${safetyChecks.length} guardrail checks applied.`
+            }
+          });
+
+          const recommendation = await new PlantCareCopilotService(this.environment).recommend(
+            plant,
+            question,
+            knowledgeContext,
+            weatherContext,
+            safetyChecks
+          );
+          const postRecommendationSafetyChecks = safetyService.validateRecommendation(recommendation);
+
+          if (postRecommendationSafetyChecks.length) {
+            recommendation.contextUsed.safetyChecks = [
+              ...recommendation.contextUsed.safetyChecks,
+              ...postRecommendationSafetyChecks
+            ];
+          }
+
           await writer.send({ type: "recommendation", recommendation });
 
           const approval = this.maybeCreateApprovalRequest(plant, question, recommendation);
