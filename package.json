@@ -14,6 +14,7 @@
     "build:pages": "node scripts/build-github-pages.mjs",
     "check": "tsc -p tsconfig.json --noEmit",
     "eval:phase5": "tsx apps/api/src/phase-5-evals.ts",
+    "eval:phase6": "tsx apps/api/src/phase-6-evals.ts",
     "deploy:worker": "wrangler deploy"
   },
   "engines": {

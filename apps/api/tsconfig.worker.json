@@ -11,6 +11,7 @@
     "src/garden-tools.service.ts",
     "src/garden.repository.ts",
     "src/mcp.service.ts",
+    "src/photo-analysis.service.ts",
     "src/plant-care-copilot.service.ts",
     "src/plant-care-recommendation.schema.ts",
     "src/plant-context.prompt.ts",

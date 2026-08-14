@@ -9,6 +9,8 @@ import {
   Observation,
   Plant,
   PlantCareRecommendation,
+  PlantPhotoAnalysis,
+  PlantPhotoAnalysisRequest,
   PlantQuestionRequest
 } from "@garden/shared";
 import { getApiBaseUrl } from "./app-config";
@@ -33,6 +35,10 @@ export class GardenService {
 
   askPlantQuestion(plantId: string, input: PlantQuestionRequest): Observable<PlantCareRecommendation> {
     return this.http.post<PlantCareRecommendation>(`${this.apiBase}/plants/${plantId}/recommendations`, input);
+  }
+
+  analyzePlantPhoto(plantId: string, input: PlantPhotoAnalysisRequest): Observable<PlantPhotoAnalysis> {
+    return this.http.post<PlantPhotoAnalysis>(`${this.apiBase}/plants/${plantId}/photo-analysis`, input);
   }
 
   streamPlantQuestion(plantId: string, input: PlantQuestionRequest): Observable<CopilotStreamEvent> {

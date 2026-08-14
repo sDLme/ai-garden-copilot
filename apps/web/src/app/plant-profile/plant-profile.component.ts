@@ -8,7 +8,8 @@ import {
   CreateObservationInput,
   ObservationType,
   Plant,
-  PlantCareRecommendation
+  PlantCareRecommendation,
+  PlantPhotoAnalysis
 } from "@garden/shared";
 import { Subscription } from "rxjs";
 import { GardenService } from "../garden.service";
@@ -236,6 +237,82 @@ import { GardenService } from "../garden.service";
           </section>
         }
 
+        <section class="photo-panel" aria-label="Photo observation analysis">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">MVP Journey 6</p>
+              <h2>Photo Observation</h2>
+            </div>
+            <p>Vision-supported plant checks with human review before saving.</p>
+          </div>
+
+          <div class="photo-grid">
+            <article class="photo-capture">
+              <label>
+                Plant photo
+                <input type="file" accept="image/png,image/jpeg,image/webp" (change)="selectPhoto($event)" />
+              </label>
+
+              <label>
+                Note
+                <textarea
+                  rows="3"
+                  [value]="photoNote()"
+                  (input)="photoNote.set($any($event.target).value)"
+                  placeholder="Yellow lower leaves after windy week"
+                ></textarea>
+              </label>
+
+              <button class="button primary" type="button" [disabled]="!photoPreview() || isAnalyzingPhoto()" (click)="analyzePhoto()">
+                @if (isAnalyzingPhoto()) {
+                  Analyzing photo
+                } @else {
+                  Analyze photo
+                }
+              </button>
+
+              @if (photoError()) {
+                <p class="error-text">{{ photoError() }}</p>
+              }
+            </article>
+
+            <article class="photo-preview-card">
+              @if (photoPreview(); as preview) {
+                <img [src]="preview" alt="Selected plant observation" />
+              } @else {
+                <div class="empty-preview">No photo selected</div>
+              }
+            </article>
+
+            @if (photoAnalysis(); as analysis) {
+              <article class="photo-analysis-card">
+                <div class="recommendation-meta horizontal">
+                  <span>{{ analysis.confidence }} confidence</span>
+                  <span>{{ analysis.generatedBy }}</span>
+                </div>
+                <h3>{{ analysis.summary }}</h3>
+                <ul class="compact-list">
+                  @for (signal of analysis.visualSignals; track signal) {
+                    <li>{{ signal }}</li>
+                  }
+                </ul>
+                <h3>Vision Guardrails</h3>
+                <ul class="compact-list">
+                  @for (check of analysis.safetyChecks; track check.id) {
+                    <li>
+                      <strong>{{ check.severity }}</strong>
+                      {{ check.message }}
+                    </li>
+                  }
+                </ul>
+                <button class="button" type="button" (click)="usePhotoObservation(analysis)">
+                  Use as observation
+                </button>
+              </article>
+            }
+          </div>
+        </section>
+
         <section class="observations-layout">
           <article class="info-panel">
             <h2>Add Observation</h2>
@@ -317,6 +394,12 @@ export class PlantProfileComponent implements OnInit, OnDestroy {
   readonly pendingApprovals = signal<ApprovalRequest[]>([]);
   readonly isAskingCopilot = signal(false);
   readonly copilotError = signal("");
+  readonly photoPreview = signal("");
+  readonly photoFileName = signal("");
+  readonly photoNote = signal("");
+  readonly photoAnalysis = signal<PlantPhotoAnalysis | null>(null);
+  readonly isAnalyzingPhoto = signal(false);
+  readonly photoError = signal("");
   private streamSubscription?: Subscription;
 
   ngOnInit(): void {
@@ -423,6 +506,78 @@ export class PlantProfileComponent implements OnInit, OnDestroy {
         this.copilotError.set("Approval could not be rejected. The request may have expired; ask Copilot again.");
         this.addTraceItem("error", "Approval rejection failed", approval.label);
       }
+    });
+  }
+
+  selectPhoto(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    this.photoError.set("");
+    this.photoAnalysis.set(null);
+
+    if (!file) {
+      this.photoPreview.set("");
+      this.photoFileName.set("");
+      return;
+    }
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      this.photoError.set("Choose a PNG, JPEG, or WebP image.");
+      this.photoPreview.set("");
+      this.photoFileName.set("");
+      return;
+    }
+
+    if (file.size > 2_500_000) {
+      this.photoError.set("Choose an image under 2.5 MB for the demo.");
+      this.photoPreview.set("");
+      this.photoFileName.set("");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      this.photoPreview.set(typeof reader.result === "string" ? reader.result : "");
+      this.photoFileName.set(file.name);
+    });
+    reader.readAsDataURL(file);
+  }
+
+  analyzePhoto(): void {
+    const currentPlant = this.plant();
+    const imageDataUrl = this.photoPreview();
+
+    if (!currentPlant || !imageDataUrl || this.isAnalyzingPhoto()) {
+      return;
+    }
+
+    this.isAnalyzingPhoto.set(true);
+    this.photoError.set("");
+
+    this.gardenService
+      .analyzePlantPhoto(currentPlant.id, {
+        imageDataUrl,
+        fileName: this.photoFileName() || "plant-photo.jpg",
+        note: this.photoNote() || undefined
+      })
+      .subscribe({
+        next: (analysis) => {
+          this.photoAnalysis.set(analysis);
+          this.isAnalyzingPhoto.set(false);
+        },
+        error: () => {
+          this.photoError.set("Photo analysis failed. Try a smaller image or add a manual observation.");
+          this.isAnalyzingPhoto.set(false);
+        }
+      });
+  }
+
+  usePhotoObservation(analysis: PlantPhotoAnalysis): void {
+    this.observationForm.setValue({
+      type: analysis.suggestedObservation.type,
+      summary: analysis.suggestedObservation.summary,
+      details: analysis.suggestedObservation.details ?? ""
     });
   }
 

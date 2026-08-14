@@ -52,6 +52,23 @@ export interface PlantQuestionRequest {
   conversationId?: string;
 }
 
+export interface PlantPhotoAnalysisRequest {
+  imageDataUrl: string;
+  fileName?: string;
+  note?: string;
+}
+
+export interface PlantPhotoAnalysis {
+  plantId: string;
+  fileName: string;
+  summary: string;
+  visualSignals: string[];
+  suggestedObservation: CreateObservationInput;
+  confidence: RecommendationConfidence;
+  generatedBy: "workers-ai-vision" | "local-fallback";
+  safetyChecks: SafetyCheck[];
+}
+
 export interface RecommendedAction {
   label: string;
   rationale: string;

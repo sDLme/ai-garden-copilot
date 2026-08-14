@@ -271,7 +271,8 @@ button.button.primary {
 }
 
 .agent-trace,
-.approval-panel {
+.approval-panel,
+.photo-panel {
   margin-top: 18px;
   border: 1px solid var(--line);
   background: #fff;
@@ -363,6 +364,11 @@ button.button.primary {
   align-self: start;
 }
 
+.recommendation-meta.horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
 .recommendation-meta span,
 .approval-pill {
   display: inline-flex;
@@ -431,6 +437,48 @@ button.button.primary {
   color: var(--leaf-dark);
   font-weight: 760;
   text-transform: uppercase;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(240px, 0.7fr) minmax(260px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.photo-capture,
+.photo-preview-card,
+.photo-analysis-card {
+  min-height: 100%;
+  border: 1px solid var(--line);
+  background: #fbfbf8;
+  padding: 18px;
+}
+
+.photo-preview-card {
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+}
+
+.photo-preview-card img {
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+}
+
+.empty-preview {
+  display: grid;
+  width: 100%;
+  min-height: 220px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-weight: 760;
+}
+
+.photo-analysis-card h3 {
+  margin: 14px 0 10px;
 }
 
 .error-text {
@@ -505,6 +553,7 @@ textarea {
   .profile-grid,
   .observations-layout,
   .approval-grid,
+  .photo-grid,
   .recommendation-header,
   .recommendation-grid {
     grid-template-columns: 1fr;

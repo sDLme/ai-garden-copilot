@@ -1,5 +1,5 @@
 import { GardenRepository } from "./garden.repository";
-import { CreateObservationInput, ObservationType, PlantQuestionRequest } from "../../shared/src";
+import { CreateObservationInput, ObservationType, PlantPhotoAnalysisRequest, PlantQuestionRequest } from "../../shared/src";
 import { PlantCareCopilotService, PlantCareCopilotEnvironment } from "./plant-care-copilot.service";
 import { GardenToolsService } from "./garden-tools.service";
 import { CopilotStreamService } from "./copilot-stream.service";
@@ -7,6 +7,7 @@ import { GardenMcpService, getMcpMetadata } from "./mcp.service";
 import { GardenKnowledgeService } from "./garden-knowledge.service";
 import { SafetyService } from "./safety.service";
 import { WeatherService } from "./weather.service";
+import { PhotoAnalysisService } from "./photo-analysis.service";
 
 interface WorkerEnvironment extends PlantCareCopilotEnvironment {
   ALLOWED_ORIGIN?: string;
@@ -80,6 +81,25 @@ export default {
         }
 
         return jsonResponse(observation, 201, corsHeaders);
+      }
+
+      const photoAnalysisMatch = url.pathname.match(/^\/api\/plants\/([^/]+)\/photo-analysis$/);
+      if (request.method === "POST" && photoAnalysisMatch) {
+        const plantId = decodeURIComponent(photoAnalysisMatch[1]);
+        const plant = repository.getPlant(plantId);
+
+        if (!plant) {
+          return jsonResponse({ message: "Plant not found" }, 404, corsHeaders);
+        }
+
+        const body = await readJson<PlantPhotoAnalysisRequest>(request);
+
+        if (!body.imageDataUrl?.trim()) {
+          return jsonResponse({ message: "Image data URL is required" }, 400, corsHeaders);
+        }
+
+        const analysis = await new PhotoAnalysisService(env).analyze(plant, body);
+        return jsonResponse(analysis, 200, corsHeaders);
       }
 
       const recommendationMatch = url.pathname.match(/^\/api\/plants\/([^/]+)\/recommendations$/);

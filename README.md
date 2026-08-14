@@ -191,6 +191,10 @@ See [Phase 5 Implementation](docs/phase-5-implementation.md) for the workflow, M
 - Deployed demo
 - Portfolio case study
 
+Current Phase 6 implementation includes photo observation upload and preview, vision-ready backend analysis with safe fallback, suggested observations, AI-native UX polish, architecture documentation, portfolio case study, and a rebuilt GitHub Pages demo bundle.
+
+See [Phase 6 Implementation](docs/phase-6-implementation.md), [Architecture](docs/architecture.md), and [Portfolio Case Study](docs/portfolio-case-study.md).
+
 ## Portfolio Goal
 
 AI Garden Copilot is meant to show that I can design and build an agentic AI product end to end: application state, user context, model tools, controlled actions, human-in-the-loop approvals, retrieval, error handling, probabilistic testing, and AI-native user experience.

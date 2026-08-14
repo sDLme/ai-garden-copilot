@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { GardenRepository } from "./garden.repository";
-import { CreateObservationInput, ObservationType, PlantQuestionRequest } from "../../shared/src";
+import { CreateObservationInput, ObservationType, PlantPhotoAnalysisRequest, PlantQuestionRequest } from "../../shared/src";
 import { PlantCareCopilotService } from "./plant-care-copilot.service";
 import { GardenToolsService } from "./garden-tools.service";
 import { CopilotStreamService } from "./copilot-stream.service";
@@ -8,6 +8,7 @@ import { GardenMcpService, getMcpMetadata } from "./mcp.service";
 import { GardenKnowledgeService } from "./garden-knowledge.service";
 import { SafetyService } from "./safety.service";
 import { WeatherService } from "./weather.service";
+import { PhotoAnalysisService } from "./photo-analysis.service";
 
 const port = Number(process.env["PORT"] ?? 3333);
 const repository = new GardenRepository();
@@ -87,6 +88,27 @@ const server = createServer(async (request, response) => {
       }
 
       sendJson(response, 201, observation);
+      return;
+    }
+
+    const photoAnalysisMatch = url.pathname.match(/^\/api\/plants\/([^/]+)\/photo-analysis$/);
+    if (request.method === "POST" && photoAnalysisMatch) {
+      const plant = repository.getPlant(decodeURIComponent(photoAnalysisMatch[1]));
+
+      if (!plant) {
+        sendJson(response, 404, { message: "Plant not found" });
+        return;
+      }
+
+      const body = await readJson<PlantPhotoAnalysisRequest>(request);
+
+      if (!body.imageDataUrl?.trim()) {
+        sendJson(response, 400, { message: "Image data URL is required" });
+        return;
+      }
+
+      const analysis = await new PhotoAnalysisService(process.env).analyze(plant, body);
+      sendJson(response, 200, analysis);
       return;
     }
 
